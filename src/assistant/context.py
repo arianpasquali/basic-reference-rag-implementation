@@ -32,7 +32,7 @@ class Context:
     )
 
     max_search_results: int = field(
-        default=10,
+        default=settings.MAX_SEARCH_RESULTS,
         metadata={
             "description": "The maximum number of search results to return for each search query."
         },

@@ -38,6 +38,12 @@ class Settings(BaseSettings):
         env="JUDGE_MODEL",
     )
 
+    MAX_SEARCH_RESULTS: int = Field(
+        default=10,
+        description="Maximum number of search results to return",
+        env="MAX_SEARCH_RESULTS",
+    )
+
     # Database Configuration
     DEFAULT_DB_PATH: Path = Field(
         default=Path("./lancedb"),
@@ -115,68 +121,3 @@ class Settings(BaseSettings):
 # Global settings instance
 # This is the main way to access settings throughout the application
 settings = Settings()
-
-
-# def get_settings() -> Settings:
-#     """
-#     Get the global settings instance.
-
-#     This function provides a way to access settings that can be easily
-#     mocked in tests or overridden in specific contexts.
-
-#     Returns:
-#         Settings: The global settings instance
-#     """
-#     return settings
-
-
-# def reload_settings() -> Settings:
-#     """
-#     Reload settings from environment variables.
-
-#     This is useful for testing or when environment variables change
-#     during runtime.
-
-#     Returns:
-#         Settings: A new settings instance with current environment values
-#     """
-#     global settings
-#     settings = Settings()
-#     return settings
-
-
-# # Convenience function for common database paths
-# def get_project_root() -> Path:
-#     """
-#     Get the project root directory.
-
-#     Returns:
-#         Path: The project root directory
-#     """
-#     current_file = Path(__file__)
-#     # Go up from src/core/settings.py to project root
-#     return current_file.parent.parent.parent
-
-
-# def get_absolute_db_path() -> Path:
-#     """
-#     Get the absolute path to the default database relative to project root.
-
-#     Returns:
-#         Path: Absolute path to the database
-#     """
-#     if settings.DEFAULT_DB_PATH.is_absolute():
-#         return settings.DEFAULT_DB_PATH
-#     return get_project_root() / settings.DEFAULT_DB_PATH
-
-
-# def get_absolute_sqlite_path() -> Path:
-#     """
-#     Get the absolute path to the SQLite database relative to project root.
-
-#     Returns:
-#         Path: Absolute path to the SQLite database
-#     """
-#     if settings.DEFAULT_SQLITE_PATH.is_absolute():
-#         return settings.DEFAULT_SQLITE_PATH
-#     return get_project_root() / settings.DEFAULT_SQLITE_PATH
