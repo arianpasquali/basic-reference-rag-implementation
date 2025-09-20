@@ -2,7 +2,7 @@
 
 A simple RAG assistant that combines vehicle sales data and documents to answer automotive questions. Built with LangGraph, LanceDB, and SQLite.
 
-## 🎯 What it does
+## What it does
 
 This assistant can:
 
@@ -11,7 +11,7 @@ This assistant can:
 - **Smart Routing**: Automatically direct questions to the right tools
 - **Safety**: Basic content filtering for safe interactions
 
-## 🏗️ How it works
+## How it works
 
 ```
 User Question → Safety Check → Route to Tools → Generate Answer
@@ -20,7 +20,7 @@ User Question → Safety Check → Route to Tools → Generate Answer
                               └─ Clarification/Redirect
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -56,13 +56,13 @@ make dev
 
 Visit `http://localhost:8000` to chat with the assistant.
 
-## 📊 What's included
+## What's included
 
 ### Sample Data
 - **Sales Data** (SQLite): Vehicle sales by model, country, and date
 - **Documents** (LanceDB): Toyota manuals, contracts, and warranty policies
 
-## 🛠️ Configuration
+## Configuration
 
 Only one environment variable needed:
 ```bash
@@ -76,7 +76,7 @@ Other settings in `src/assistant/context.py`:
 - `model`: LLM model (default: gpt-4o-mini)
 - `max_search_results`: Number of documents to retrieve
 
-## 🔧 Project Structure
+## Project Structure
 
 ```
 src/
@@ -94,7 +94,7 @@ data/                    # Sample CSV data
 docs/                    # Sample PDF documents
 ```
 
-## 🧪 Try these questions
+## Try these questions
 
 **Sales data:**
 - "What were the RAV4 sales in Germany in 2024?"
@@ -107,7 +107,7 @@ docs/                    # Sample PDF documents
 **Combined:**
 - "Compare RAV4 sales and summarize its warranty"
 
-## 🛠️ Development
+## Development
 
 ```bash
 # Code quality
@@ -120,7 +120,7 @@ make test
 make dev  # Opens LangGraph Studio
 ```
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 **Missing API key:**
 ```bash
