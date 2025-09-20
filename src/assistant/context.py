@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field, fields
+import os
 from typing import Annotated
 
 from . import prompts
@@ -35,26 +35,20 @@ class Context:
             "description": "The maximum number of search results to return for each search query."
         },
     )
-    
+
     router_system_prompt: str = field(
         default=prompts.ROUTER_SYSTEM_PROMPT,
-        metadata={
-            "description": "System prompt for query classification and routing."
-        },
+        metadata={"description": "System prompt for query classification and routing."},
     )
-    
+
     more_info_system_prompt: str = field(
         default=prompts.MORE_INFO_SYSTEM_PROMPT,
-        metadata={
-            "description": "System prompt for asking users for more information."
-        },
+        metadata={"description": "System prompt for asking users for more information."},
     )
-    
+
     general_system_prompt: str = field(
         default=prompts.GENERAL_SYSTEM_PROMPT,
-        metadata={
-            "description": "System prompt for handling general non-Toyota queries."
-        },
+        metadata={"description": "System prompt for handling general non-Toyota queries."},
     )
 
     def __post_init__(self) -> None:

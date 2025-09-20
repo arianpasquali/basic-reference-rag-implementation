@@ -37,7 +37,6 @@ This intelligent assistant demonstrates a sophisticated RAG (Retrieval-Augmented
 
 - Python 3.9+
 - OpenAI API key
-- Git
 
 ### Installation
 
@@ -146,7 +145,6 @@ lancedb/                  # Vector database files
 ### Adding New Tools
 1. Define tool function with `@tool` decorator in `tools.py`
 2. Add to `TOOLS` list
-3. Optional: Add special handling in `call_tools()` for async operations
 
 ### Customizing Prompts
 Edit prompts in `src/react_agent/prompts.py`:
@@ -234,50 +232,66 @@ python scripts/simple_pdf_to_lancedb.py
 python scripts/ingest_to_sqlite.py
 ```
 
-**3. LangGraph Blocking Warnings**
-- Fixed with async SQLite operations using `asyncio.to_thread()`
-
-**4. Tool Call Errors**
-- Check tool function signatures match expected parameters
-- Verify database connections are established
-
 ### Debug Mode
 ```bash
 # Run with detailed logging
 LOG_LEVEL=DEBUG chainlit run src/chainlit_app.py
 ```
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make changes with proper tests
-4. Submit a pull request
-
 ### Development Setup
+
+**Quick Setup:**
 ```bash
-# Install development dependencies
-pip install -e ".[dev]"
-
-# Run tests
-python -m pytest tests/
-
-# Code formatting
-black src/
-isort src/
+# Complete development environment setup
+make dev-setup
 ```
 
-## 📄 License
+**Manual Setup:**
+```bash
+# Install development dependencies
+uv sync
 
-[Specify your license here]
+# Install pre-commit hooks
+make setup-pre-commit
 
-## 🆘 Support
+# Initialize databases
+make setup-databases
+```
 
-For issues and questions:
-1. Check the troubleshooting section above
-2. Review LangGraph and LanceDB documentation
-3. Open an issue with detailed error information
+**Code Quality:**
+```bash
+# Run linting
+make lint
 
+# Format code
+make format
+
+# Type checking
+make type-check
+
+# Run all checks
+make check-all
+
+# Run tests
+make test
+```
+
+**Pre-commit Hooks:**
+The project uses pre-commit hooks to ensure code quality:
+- **Ruff**: Fast Python linter and formatter
+- **Type checking**: MyPy static type checking
+- **Security**: Bandit security linting
+- **Import sorting**: isort for clean imports
+- **Basic checks**: Trailing whitespace, file endings, etc.
+
+Hooks run automatically on `git commit` and can be run manually:
+```bash
+# Run on all files
+make pre-commit-run
+
+# Run on staged files only
+pre-commit run
+```
 ---
 
 **Built with**: LangGraph, LanceDB, OpenAI, Chainlit, SQLite, Python 3.9+

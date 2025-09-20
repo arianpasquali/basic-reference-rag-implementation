@@ -1,4 +1,5 @@
-[ ]- Prepare repo
+[x ]- Prepare repo
+[x ]- initial import
 [ ]- Data ingestion script
     [ ]- structured csv data into lancedb instance
     [ ]- unstructure data (pdfs) to vectors on lancedb instance
@@ -10,8 +11,9 @@ Refatorar codigo e limpar
 [x]- remover arquivos que nao estao sendo usados
 [x]- limpar settings e deixar mais simples
     [x]- fazer safety ser safe by default, no feature flag
-[ ] incluir prec-commit for lint e code formatting
-[ ] manter no state os retrieved_documents and executed_sql_queries
+[ ] incluir pre-commit for lint e code formatting
+[x] manter no state os retrieved_documents and executed_sql_queries
+[ ] remover ou simplificar makefile
 
 Ingestao
 [ ]- Fazer ser simples de seguir
@@ -24,7 +26,7 @@ Router
 
 Retrieval
 [ ]- Make sure we are using hybrid search
-    [ ] - we are not embeddings the documents. we are using full text search only. 
+    [ ] - we are not embeddings the documents. we are using full text search only.
     [ ] - process documents embeddings vectors
 [ ]- Make sure we have a optimization query node
 
@@ -46,4 +48,3 @@ Evals
 [ ]- criar script de retrieval eval
 [ ]- criar script de eval
    [ ] - usar langsmith? ou also no terminal mais simples
-

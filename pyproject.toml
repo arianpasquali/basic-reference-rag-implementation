@@ -1,5 +1,5 @@
 [project]
-name = "rag-toyota"
+name = "basic-reference-rag-implementation"
 version = "0.1.0"
 description = "AI agent service built with LangGraph, FastAPI and Chainlit"
 readme = "README.md"
@@ -81,10 +81,85 @@ client = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py39"  # Changed to match Python 3.9 compatibility
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.egg-info",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "docs/",
+    "lancedb/",
+    "scripts/__pycache__/",
+]
 
 [tool.ruff.lint]
-extend-select = ["I", "U"]
+# Enable core rule sets for practical development
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+]
+
+ignore = [
+    "E501",   # Line too long (let ruff format handle this)
+    "W293",   # Blank line contains whitespace
+    "W291",   # Trailing whitespace
+]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "lancedb",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S106", "S108"]  # Allow assert, hardcoded passwords in tests
+"scripts/**/*.py" = ["S101", "S603", "S607"]  # Allow scripts to be more permissive
+
+[tool.ruff.lint.isort]
+known-first-party = ["assistant", "shared"]
+force-sort-within-sections = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+# Security settings for bandit integration
+[tool.bandit]
+exclude_dirs = ["tests", "scripts/test_*"]
+skips = ["B101", "B601"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

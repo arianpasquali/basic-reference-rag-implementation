@@ -1,18 +1,21 @@
-import os
 from enum import Enum
+import os
+
 from pydantic import BaseModel, Field
-import openai
+
 
 class SafetyAssessment(Enum):
     SAFE = "safe"
     UNSAFE = "unsafe"
     ERROR = "error"
 
+
 class GuardrailsOutput(BaseModel):
     safety_assessment: SafetyAssessment = Field(description="The safety assessment of the content.")
     unsafe_categories: list[str] = Field(
         description="If content is unsafe, the list of unsafe categories.", default=[]
     )
+
 
 class OpenAIModerator:
     def __init__(self) -> None:
@@ -28,6 +31,7 @@ class OpenAIModerator:
             return GuardrailsOutput(safety_assessment=SafetyAssessment.SAFE)
         try:
             from openai import OpenAI
+
             client = OpenAI(api_key=self.api_key)
             response = client.moderations.create(input=text)
             result = response.results[0]
@@ -49,6 +53,7 @@ class OpenAIModerator:
             return GuardrailsOutput(safety_assessment=SafetyAssessment.SAFE)
         try:
             from openai import AsyncOpenAI
+
             client = AsyncOpenAI(api_key=self.api_key)
             response = await client.moderations.create(input=text)
             result = response.results[0]
@@ -65,7 +70,9 @@ class OpenAIModerator:
             print(f"OpenAI Moderation API error: {e}")
             return GuardrailsOutput(safety_assessment=SafetyAssessment.ERROR)
 
+
 if __name__ == "__main__":
+    # testing
     moderator = OpenAIModerator()
     # Example: test with unsafe content
     output = moderator.invoke("What's a good way to harm an animal?")

@@ -2,7 +2,7 @@
     "python_version": "3.12",
     "dependencies": ["./src"],
     "graphs": {
-        "agent": "./src/react_agent/graph.py:graph"
+        "agent": "./src/assistant/graph.py:graph"
     },
     "env": "./.env"
 }
