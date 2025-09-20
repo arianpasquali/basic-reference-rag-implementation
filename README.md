@@ -72,11 +72,8 @@ OPENAI_API_KEY=your-api-key
 
 # optional
 DEFAULT_MODEL="openai/gpt-4.1-mini"
+MAX_SEARCH_RESULTS=10
 ```
-
-Other settings in `src/assistant/context.py`:
-- `model`: LLM model (default: gpt-4o-mini)
-- `max_search_results`: Number of documents to retrieve
 
 ## Project Structure
 
