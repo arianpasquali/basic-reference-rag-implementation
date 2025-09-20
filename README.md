@@ -56,6 +56,8 @@ make dev
 
 Visit `http://localhost:8000` to chat with the assistant.
 
+![Toyota RAG Assistant UI](media/run_ui.png)
+
 ## What's included
 
 ### Sample Data
@@ -119,6 +121,8 @@ make test
 # Debug mode
 make dev  # Opens LangGraph Studio
 ```
+
+![LangGraph Studio Development](media/studio_dev.png)
 
 ## Troubleshooting
 
