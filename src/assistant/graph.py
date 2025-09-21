@@ -15,7 +15,6 @@ import logging
 from typing import Any, Dict, List, Literal, cast
 
 from dotenv import load_dotenv
-from langchain_core.documents import Document
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
@@ -25,7 +24,7 @@ from assistant.context import Context
 from assistant.guardrails import GuardrailsOutput, OpenAIModerator, SafetyAssessment
 from assistant.state import InputState, Router, State
 from assistant.tools import TOOLS, SearchResult
-from assistant.utils import load_chat_model
+from assistant.utils import convert_search_result_to_document, load_chat_model
 
 load_dotenv()
 
@@ -264,16 +263,7 @@ async def call_tools(state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
                 # Convert SearchResult objects to Document objects for state tracking
                 for search_result in tool_result:
                     if isinstance(search_result, SearchResult):
-                        doc = Document(
-                            page_content=search_result.content,
-                            metadata={
-                                "filename": search_result.filename,
-                                "page": search_result.page,
-                                "chunk_index": search_result.chunk_index,
-                                "relevance_score": search_result.relevance_score,
-                                "tool_used": tool_name,
-                            },
-                        )
+                        doc = convert_search_result_to_document(search_result, tool_name)
                         retrieved_docs.append(doc)
                         logger.info(
                             f"Tracked document: {search_result.filename} (page {search_result.page})"
@@ -291,19 +281,10 @@ async def call_tools(state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
                 # Convert SearchResult objects to Document objects for state tracking
                 for search_result in tool_result:
                     if isinstance(search_result, SearchResult):
-                        doc = Document(
-                            page_content=search_result.content,
-                            metadata={
-                                "filename": search_result.filename,
-                                "page": search_result.page,
-                                "chunk_index": search_result.chunk_index,
-                                "relevance_score": search_result.relevance_score,
-                                "tool_used": tool_name,
-                            },
-                        )
+                        doc = convert_search_result_to_document(search_result, tool_name)
                         retrieved_docs.append(doc)
                         logger.info(
-                            f"📄 Tracked document: {search_result.filename} (page {search_result.page})"
+                            f"Tracked document: {search_result.filename} (page {search_result.page})"
                         )
 
                 # Create tool message with the result
@@ -321,7 +302,7 @@ async def call_tools(state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
                 # Track the SQL query
                 if query and query not in executed_queries:
                     executed_queries.append(query)
-                    logger.info(f"📝 Tracked SQL query: {query[:100]}...")
+                    logger.info(f"Tracked SQL query: {query[:100]}...")
 
                 # Create tool message with the result
                 tool_message = ToolMessage(

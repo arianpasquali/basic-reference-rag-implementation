@@ -12,58 +12,13 @@ from langchain_core.tools import tool
 import pandas as pd
 from pydantic import BaseModel, Field
 
+from core.settings import settings
 import lancedb
 
+DEFAULT_DB_PATH = settings.DEFAULT_DB_PATH
+DEFAULT_SQLITE_PATH = settings.DEFAULT_SQLITE_PATH
+
 logger = logging.getLogger(__name__)
-
-# Default database paths
-DEFAULT_DB_PATH = "./lancedb"
-DEFAULT_SQLITE_PATH = "toyota_sales.db"
-
-
-# # Async helper functions for SQLite operations
-# async def _execute_sql_query_async(query: str, db_path: str = DEFAULT_SQLITE_PATH) -> str:
-#     """Execute SQL query asynchronously to avoid blocking the event loop."""
-
-#     def _sync_execute():
-#         try:
-#             # Auto-fix common table name mistakes
-#             corrected_query = query.replace("sales_data", "fact_sales")
-
-#             conn = sqlite3.connect(db_path, check_same_thread=False)
-#             df = pd.read_sql_query(corrected_query, conn)
-#             conn.close()
-#             return df.to_string(index=False)
-#         except Exception as e:
-#             return f"SQL execution error: {e}"
-
-#     # Run the blocking operation in a separate thread
-#     return await asyncio.to_thread(_sync_execute)
-
-
-# async def _get_sql_schema_async(db_path: str = DEFAULT_SQLITE_PATH) -> str:
-#     """Get SQL schema asynchronously to avoid blocking the event loop."""
-
-#     def _sync_get_schema():
-#         try:
-#             conn = sqlite3.connect(db_path, check_same_thread=False)
-#             cursor = conn.cursor()
-#             cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-#             tables = [row[0] for row in cursor.fetchall()]
-#             schema_str = ""
-#             for table_name in tables:
-#                 schema_str += f"\nTable: {table_name}\n"
-#                 cursor.execute(f"PRAGMA table_info({table_name});")
-#                 columns = cursor.fetchall()
-#                 for col in columns:
-#                     schema_str += f"  - {col[1]} ({col[2]})\n"
-#             conn.close()
-#             return schema_str.strip()
-#         except Exception as e:
-#             return f"Error retrieving schema: {e}"
-
-#     # Run the blocking operation in a separate thread
-#     return await asyncio.to_thread(_sync_get_schema)
 
 
 class SearchResult(BaseModel):
@@ -81,20 +36,20 @@ try:
     if Path(DEFAULT_DB_PATH).exists():
         db = lancedb.connect(DEFAULT_DB_PATH)
         table = db.open_table("documents")
-        sqlite_conn = sqlite3.connect(DEFAULT_SQLITE_PATH)
+        sqlite_conn = sqlite3.connect(f"file:{DEFAULT_SQLITE_PATH}?mode=ro", uri=True)
 
         # Ensure FTS index exists for hybrid search
         try:
             # Try to create FTS index on text field (will skip if already exists)
             table.create_fts_index("text", replace=False)
-            logger.info("✅ FTS index verified for hybrid search")
+            logger.info("BM25+FTS index verified for hybrid search")
         except Exception as fts_error:
             if "already exists" in str(fts_error).lower():
-                logger.info("✅ FTS index already exists")
+                logger.info("BM25+FTS index already exists")
             else:
-                logger.warning(f"⚠️ Could not create FTS index: {fts_error}")
+                logger.warning(f"Could not create BM25+FTS index: {fts_error}")
 
-        logger.info(f"✅ Connected to databases: {DEFAULT_DB_PATH}, {DEFAULT_SQLITE_PATH}")
+        logger.info(f"Connected to databases: {DEFAULT_DB_PATH}, {DEFAULT_SQLITE_PATH}")
     else:
         # Create dummy connections for import-time compatibility
         db = None
@@ -258,10 +213,12 @@ def execute_sql(query: str) -> str:
 def _sync_execute_sql(query: str) -> str:
     """Synchronous SQL execution helper."""
     try:
-        # Auto-fix common table name mistakes
+        # TODO: Workaround. Force correct common table name mistakes
         corrected_query = query.replace("sales_data", "fact_sales")
 
-        conn = sqlite3.connect(DEFAULT_SQLITE_PATH, check_same_thread=False)
+        conn = sqlite3.connect(
+            f"file:{DEFAULT_SQLITE_PATH}?mode=ro", uri=True, check_same_thread=False
+        )
         df = pd.read_sql_query(corrected_query, conn)
         conn.close()
         return df.to_string(index=False)
@@ -283,7 +240,9 @@ def get_sql_schema() -> str:
 def _sync_get_schema() -> str:
     """Synchronous schema retrieval helper."""
     try:
-        conn = sqlite3.connect(DEFAULT_SQLITE_PATH, check_same_thread=False)
+        conn = sqlite3.connect(
+            f"file:{DEFAULT_SQLITE_PATH}?mode=ro", uri=True, check_same_thread=False
+        )
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
         tables = [row[0] for row in cursor.fetchall()]

@@ -11,20 +11,31 @@ Refatorar codigo e limpar
 [x]- remover arquivos que nao estao sendo usados
 [x]- limpar settings e deixar mais simples
     [x]- fazer safety ser safe by default, no feature flag
-[ ] incluir pre-commit for lint e code formatting
+[x] incluir pre-commit for lint e code formatting
 [x] manter no state os retrieved_documents and executed_sql_queries
-[ ] remover ou simplificar makefile
+[x] remover ou simplificar makefile
+[x] rever system prompt and use just prompts.py
+[ ] rever logging setup utils/logging_config.py
+[ ] rever o searchdocuments results to document list
+[ ] refatorar Tools.py
+
+
+UI
+[x] criar um ficheiro com os starters
 
 Ingestao
 [ ]- Fazer ser simples de seguir
 [ ]- Testar com PDF maiores
 [ ]- usar contextual retrieval
+[ ]- rever usando chroma_db
 
 Router
 [x] - supportar block off topic
 [x] - supportar ask for more info
 
 Retrieval
+[ ] - revisar codigo retrieval
+[ ] - unificar tudo dentro de um unico banco. LanceDB
 [ ]- Make sure we are using hybrid search
     [ ] - we are not embeddings the documents. we are using full text search only.
     [ ] - process documents embeddings vectors
@@ -35,16 +46,29 @@ Segurança
 [] - suportar jailbreak
     - suportar huggingface jailbreak detection model
 [] - nao vazar dados do schema da base de dados
-[] - nao vazer system prompt
+[] - nao vaaer system prompt
 
 Documentacao
-[ ]- Criar github repo
+[x]- Criar github repo
 [x]- Criar README
 [ ]- Criar diagrama no Excalidraw
 
-
 Evals
-[ ]- criar dataset
-[ ]- criar script de retrieval eval
-[ ]- criar script de eval
+[ ] - revisar evals. simplificar
+[ ] - fazer um dataset simples com pergunta e resposta
+[ ] - fazer um dataset simples para avaliar router
+[ ] - fazer um dataset simples para avaliar tool call
+[x]- criar dataset
+[x]- criar script de retrieval eval
+[x]- criar script de eval
    [ ] - usar langsmith? ou also no terminal mais simples
+
+
+Deploy
+[x] - Pesquisar commo fazer deploy
+    [ ] - Docker init deve criar o banco, ingerir csvs and processar pdfs.
+    - Deploy em algum outro serviço que hospedada Docker?
+        - Conta Azure particular?
+[ ] configurar render.com para docker deploy
+[ ] permitir reference documents ser links que abrem no browser
+    [ ] pra isso os pdfs devem estar acessiveis via http

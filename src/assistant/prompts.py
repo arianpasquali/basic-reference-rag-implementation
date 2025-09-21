@@ -11,7 +11,7 @@ CRITICAL CITATION REQUIREMENTS:
 - [Document Name, Page X]
 - [Document Name, Page Y]
 
-- For single document searches, use "**Source:**" (singular)
+- For single document searches, use "Source:" (singular)
 - Always include the document filename and page number
 - Place citations at the very end of your response
 

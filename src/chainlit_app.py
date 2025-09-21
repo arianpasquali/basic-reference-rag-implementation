@@ -23,6 +23,7 @@ from langchain_core.runnables import RunnableConfig
 
 from assistant import graph
 from assistant.context import Context
+from assistant.utils import load_starters_from_csv
 from core.settings import settings
 
 # Set up logging
@@ -34,80 +35,40 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("openai").setLevel(logging.WARNING)
 logging.getLogger("openai._base_client").setLevel(logging.WARNING)
 
-# Toyota-specific system prompt
-TOYOTA_SYSTEM_PROMPT = """You are a helpful assistant for Toyota/Lexus vehicle information and sales data.
-
-CRITICAL CITATION REQUIREMENTS:
-- When you use document search tools (search_documents, search_in_document) to answer questions, you MUST always cite your sources at the end of your response.
-- Use this exact format for citations:
-
-**Sources:**
-- [Document Name, Page X]
-- [Document Name, Page Y]
-
-- For single document searches, use "Source:" (singular)
-- Always include the document filename and page number
-- Place citations at the very end of your response
-
-Example:
-"According to the warranty policy, coverage extends for 3 years or 36,000 miles, whichever comes first.
-
-**Sources:**
-- [Warranty_Policy_Appendix.pdf, Page 5]
-- [Contract_Toyota_2023.pdf, Page 12]"
-
-NEVER provide document-based answers without proper citations."""
+# System prompts are now centralized in prompts.py
 
 
 @cl.set_starters
 async def set_starters():
-    """Set starter messages for common queries."""
-    return [
-        cl.Starter(
-            label="Monthly RAV4 sales in Germany in 2024",
-            message="Can you help me get the monthly sales of the RAV4 in Germany in 2024?",
-        ),
-        cl.Starter(
-            label="Top countries by vehicle sales",
-            message="Show me the top countries by vehicle sales",
-        ),
-        cl.Starter(
-            label="Toyota warranty for Europe",
-            message="What is the standard Toyota warranty for Europe?",
-        ),
-        cl.Starter(
-            label="Models from Toyota we sold in 2023",
-            message="What are the models from Toyota we sold in 2023?",
-        ),
-        cl.Starter(
-            label="Toyota sales in Belgium in 2025",
-            message="Can you help me get the monthly sales of the Toyota in Belgium in 2025?",
-        ),
-        cl.Starter(
-            label="Monthly Camaro sales in Belgium in 2023",
-            message="Can you help me get the monthly sales of the Camaro in Belgium in 2023?",
-        ),
-        cl.Starter(
-            label="Monthly RAV4 HEV sales in 2023",
-            message="Can you help me get the monthly sales of the RAV4 HEV in 2023?",
-        ),
-        cl.Starter(
-            label="RAV4 maintenance schedule",
-            message="What is the maintenance schedule for my RAV4?",
-        ),
-        cl.Starter(
-            label="Engine oil check procedure",
-            message="How do I check the engine oil level in my Toyota vehicle?",
-        ),
-        cl.Starter(
-            label="Tire repair kit location",
-            message="Where is the tire repair kit located in my vehicle?",
-        ),
-        cl.Starter(
-            label="Compare Toyota vs Lexus warranty",
-            message="What are the key warranty differences between Toyota and Lexus vehicles?",
-        ),
-    ]
+    """Set sample conversation starter messages to demonstrate what we can do."""
+    try:
+        # Load conversation starters from file
+        conversation_starters = load_starters_from_csv(settings.STARTERS_CSV_PATH)
+        logger.info(
+            f"Loaded {len(conversation_starters)} conversation starter messages from csv file"
+        )
+
+        # Create Chainlit Starters
+        cl_starters = [
+            cl.Starter(label=item["label"], message=item["message"])
+            for item in conversation_starters
+        ]
+
+        return cl_starters
+
+    except Exception as e:
+        logger.error(f"Error loading starters from csv file: {e}")
+        # Fallback to a basic starter if CSV loading fails
+        return [
+            cl.Starter(
+                label="Toyota vs Lexus warranty",
+                message="Compare Toyota vs Lexus warranty",
+            ),
+            cl.Starter(
+                label="RAV4 sales in Germany in 2024",
+                message="What was the monthly RAV4 sales in Germany in 2024?",
+            ),
+        ]
 
 
 @cl.on_chat_start
@@ -116,8 +77,8 @@ async def start():
     try:
         logger.info("Starting new chat session")
 
-        # Initialize context for the agent
-        context = Context(system_prompt=TOYOTA_SYSTEM_PROMPT, model=settings.DEFAULT_MODEL)
+        # Initialize context for the agent (uses default system prompt from prompts.py)
+        context = Context(model=settings.DEFAULT_MODEL)
 
         logger.info(f"Context initialized with model: {context.model}")
 

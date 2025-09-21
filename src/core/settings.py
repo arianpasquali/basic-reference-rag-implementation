@@ -57,6 +57,13 @@ class Settings(BaseSettings):
         env="DEFAULT_SQLITE_PATH",
     )
 
+    # UI Configuration
+    STARTERS_CSV_PATH: Path = Field(
+        default=Path("./resources/converstation_starters.csv"),
+        description="Path to CSV file containing conversation starters",
+        env="STARTERS_CSV_PATH",
+    )
+
     # Optional Observability Configuration
     LANGSMITH_PROJECT: Optional[str] = Field(
         default=None,
@@ -96,7 +103,7 @@ class Settings(BaseSettings):
 
     PORT: int = Field(default=8000, description="Server port number", env="PORT")
 
-    @field_validator("DEFAULT_DB_PATH", "DEFAULT_SQLITE_PATH", mode="before")
+    @field_validator("DEFAULT_DB_PATH", "DEFAULT_SQLITE_PATH", "STARTERS_CSV_PATH", mode="before")
     @classmethod
     def convert_path_strings(cls, value):
         """Convert string paths to Path objects."""
