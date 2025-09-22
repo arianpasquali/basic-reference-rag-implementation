@@ -40,7 +40,7 @@ ENV CHAINLIT_HOST=0.0.0.0
 ENV CHAINLIT_PORT=8000
 
 RUN make setup-structured-db
-# RUN make setup-embeddings-db
+RUN make setup-embeddings-db
 
 # Run the Chainlit application
 CMD ["uv", "run", "chainlit", "run", "src/chainlit_app.py", "--host", "0.0.0.0", "--port", "8000"]
