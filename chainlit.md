@@ -26,7 +26,7 @@ This assistant uses:
 - **SQL Tools** for structured sales data queries
 - **RAG Tools** for unstructured document search
 
-![Agent Architecture](agent_architecture.png)
+![Agent Architecture](https://rag-reference-demo.onrender.com/public/agent_architecture.png)
 
 #### Security Trade-offs
 
