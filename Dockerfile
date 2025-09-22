@@ -8,6 +8,7 @@ ENV UV_COMPILE_BYTECODE=1
 
 # Install system dependencies including make and sqlite3
 RUN apt-get update && apt-get install -y \
+    vim \
     make \
     sqlite3 \
     && rm -rf /var/lib/apt/lists/*
