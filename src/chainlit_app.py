@@ -219,8 +219,8 @@ async def on_message(message: cl.Message):
     if retrieved_documents:
         logger.info(f"Found {len(retrieved_documents)} retrieved documents in state")
 
-        # Get the documents directory path
-        docs_dir = Path(__file__).parent.parent / "docs"
+        # Get the documents directory path - use public for web deployments
+        docs_dir = Path(__file__).parent.parent / "public"
 
         # Create PDF elements from retrieved documents (no text parsing needed!)
         pdf_elements = create_pdf_elements_from_retrieved_docs(retrieved_documents, docs_dir)

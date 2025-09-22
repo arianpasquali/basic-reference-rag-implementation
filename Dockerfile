@@ -30,6 +30,9 @@ COPY docs/ ./docs/
 COPY scripts/ ./scripts/
 COPY resources/ ./resources/
 COPY public/ ./public/
+
+# Copy PDF files to public directory for web access
+RUN cp docs/*.pdf public/ 2>/dev/null || true
 COPY chainlit.md ./
 COPY Makefile ./
 
