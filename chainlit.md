@@ -17,7 +17,7 @@ This POC demonstrates an agent that can:
 - **Owner's Manual**: "Where is the tire repair kit located for the UX?"
 - **Hybrid Analysis**: "Compare Toyota vs Lexus SUV sales in Western Europe and summarize warranty differences"
 
-### Architecture Overview
+# Architecture Overview
 
 This assistant uses:
 - **LangGraph Agent** with conditional routing and safety guardrails
@@ -25,3 +25,10 @@ This assistant uses:
 - **OpenAI Moderation** for content safety filtering
 - **SQL Tools** for structured sales data queries
 - **RAG Tools** for unstructured document search
+
+### **Security Trade-offs**
+
+- **Input Guardrails**: OpenAI Moderation API filters all incoming messages before processing. It is a simple solution given the time constraints. It is the very minimum we need to have for the majority of the applications.
+- **Read-Only Database Access**: SQLite connections use `mode=ro` to prevent data modification. Ideally LLM should not have direct access to database because we risk SQL injection and data leak. Given the time constraint this is an initial implementation that keeps the agent flexible but do not allow any destructive SQL command to be executed. It is important to mention that ata leakage is not protected enough with the current version.
+- **Grounded Responses**: Prompt engineering to mitigate hallucination by requiring source attribution. Further reasoning can be implemented but latency would be penalized. In order to keep improving that we need a proper evaluation pipeline in place to iterate properly.
+- **Smart routing with Off-topic detection**: Off-topic conversations are a risky vector for Prompt or SQL injection and jailbreaking. We block that with a router node.
