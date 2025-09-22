@@ -36,9 +36,16 @@ dev: ## Run LangGraph Studio for development
 	uv run langgraph dev
 
 # Database setup
-setup-db: ## Initialize databases with sample data
-	python scripts/simple_pdf_to_lancedb.py
-	python scripts/ingest_to_sqlite.py
+setup-structured-db: ## Initialize databases with sample data
+	uv run python scripts/structured_data_ingestion_pipeline.py
+
+# Embeddings setup
+setup-embeddings-db: ## Initialize databases with sample data
+	uv run python scripts/unstructured_data_ingestion_pipeline.py
+
+
+# All setup
+setup-db: setup-structured-db setup-embeddings-db
 
 # Cleanup
 clean: ## Clean up cache and temporary files
@@ -58,8 +65,8 @@ quick: clean lint format test ## Quick development check (clean, lint, format, t
 first-setup: ## Complete first-time setup
 	uv sync
 	uv run pre-commit install
-	python scripts/simple_pdf_to_lancedb.py || echo "⚠️  Database setup skipped - run 'make setup-db' later"
-	python scripts/ingest_to_sqlite.py || echo "⚠️  Database setup skipped - run 'make setup-db' later"
+	python scripts/structured_data_ingestion_pipeline.py || echo "⚠️  Database setup skipped - run 'make setup-db' later"
+	python scripts/unstructured_data_ingestion_pipeline.py || echo "⚠️  Database setup skipped - run 'make setup-db' later"
 	@echo ""
 	@echo "🎉 Setup complete! Next steps:"
 	@echo "   make run    # Start the web interface"

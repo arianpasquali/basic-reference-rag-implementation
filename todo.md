@@ -16,29 +16,28 @@ Refatorar codigo e limpar
 [x] remover ou simplificar makefile
 [x] rever system prompt and use just prompts.py
 [ ] rever logging setup utils/logging_config.py
-[ ] rever o searchdocuments results to document list
-[ ] refatorar Tools.py
+[x] rever o searchdocuments results to document list
+[x] refatorar Tools.py
 
 
 UI
 [x] criar um ficheiro com os starters
 
 Ingestao
-[ ]- Fazer ser simples de seguir
-[ ]- Testar com PDF maiores
-[ ]- usar contextual retrieval
-[ ]- rever usando chroma_db
+[x]- Fazer ser simples de seguir
+[x]- Testar com PDF maiores
+[x]- usar contextual retrieval
+[x]- rever usando chroma_db
 
 Router
 [x] - supportar block off topic
 [x] - supportar ask for more info
 
 Retrieval
-[ ] - revisar codigo retrieval
-[ ] - unificar tudo dentro de um unico banco. LanceDB
-[ ]- Make sure we are using hybrid search
+[x] - revisar codigo retrieval
+[x]- Make sure we are using hybrid search
     [ ] - we are not embeddings the documents. we are using full text search only.
-    [ ] - process documents embeddings vectors
+    [x] - process documents embeddings vectors
 [ ]- Make sure we have a optimization query node
 
 Segurança
@@ -51,7 +50,9 @@ Segurança
 Documentacao
 [x]- Criar github repo
 [x]- Criar README
-[ ]- Criar diagrama no Excalidraw
+[x]- Criar diagrama no Excalidraw
+[x] - clear readme from chromadb details
+[ ] - have a dedicated readme for data ingestion
 
 Evals
 [ ] - revisar evals. simplificar

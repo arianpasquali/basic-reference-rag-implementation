@@ -6,7 +6,6 @@ from environment variables with proper validation, type checking, and defaults.
 """
 
 from pathlib import Path
-from typing import Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
@@ -45,10 +44,41 @@ class Settings(BaseSettings):
     )
 
     # Database Configuration
-    DEFAULT_DB_PATH: Path = Field(
-        default=Path("./lancedb"),
-        description="Default path for LanceDB vector database",
-        env="DEFAULT_DB_PATH",
+    CHROMA_DB_PATH: Path = Field(
+        default=Path("./chroma_db"),
+        description="Default path for ChromaDB vector database",
+        env="CHROMA_DB_PATH",
+    )
+
+    CHROMA_COLLECTION_NAME: str = Field(
+        default="documents",
+        description="ChromaDB collection name for documents",
+        env="CHROMA_COLLECTION_NAME",
+    )
+
+    EMBEDDING_MODEL: str = Field(
+        default="text-embedding-3-small",
+        description="OpenAI embedding model for ChromaDB",
+        env="EMBEDDING_MODEL",
+    )
+
+    # Data Ingestion Configuration
+    CHUNK_SIZE: int = Field(
+        default=1000,
+        description="Maximum characters per text chunk for document processing",
+        env="CHUNK_SIZE",
+    )
+
+    CHUNK_OVERLAP: int = Field(
+        default=200,
+        description="Overlap between chunks for context preservation",
+        env="CHUNK_OVERLAP",
+    )
+
+    INPUT_DOCS_PATH: Path = Field(
+        default=Path("./docs"),
+        description="Default path to input documents directory",
+        env="INPUT_DOCS_PATH",
     )
 
     DEFAULT_SQLITE_PATH: Path = Field(
@@ -64,38 +94,6 @@ class Settings(BaseSettings):
         env="STARTERS_CSV_PATH",
     )
 
-    # Optional Observability Configuration
-    LANGSMITH_PROJECT: Optional[str] = Field(
-        default=None,
-        description="LangSmith project name for observability",
-        env="LANGSMITH_PROJECT",
-    )
-
-    LANGCHAIN_TRACING_V2: bool = Field(
-        default=False, description="Enable LangChain tracing v2", env="LANGCHAIN_TRACING_V2"
-    )
-
-    LANGCHAIN_PROJECT: Optional[str] = Field(
-        default=None, description="LangChain project name", env="LANGCHAIN_PROJECT"
-    )
-
-    LANGSMITH_API_KEY: Optional[str] = Field(
-        default=None, description="LangSmith API key for observability", env="LANGSMITH_API_KEY"
-    )
-
-    # Application Configuration
-    APP_NAME: str = Field(
-        default="Toyota RAG Assistant",
-        description="Application name for display purposes",
-        env="APP_NAME",
-    )
-
-    ENVIRONMENT: str = Field(
-        default="development",
-        description="Application environment (development, staging, production)",
-        env="ENVIRONMENT",
-    )
-
     DEBUG: bool = Field(default=False, description="Enable debug mode", env="DEBUG")
 
     # Server Configuration
@@ -103,7 +101,14 @@ class Settings(BaseSettings):
 
     PORT: int = Field(default=8000, description="Server port number", env="PORT")
 
-    @field_validator("DEFAULT_DB_PATH", "DEFAULT_SQLITE_PATH", "STARTERS_CSV_PATH", mode="before")
+    # Validators
+    @field_validator(
+        "CHROMA_DB_PATH",
+        "DEFAULT_SQLITE_PATH",
+        "STARTERS_CSV_PATH",
+        "INPUT_DOCS_PATH",
+        mode="before",
+    )
     @classmethod
     def convert_path_strings(cls, value):
         """Convert string paths to Path objects."""
@@ -111,20 +116,29 @@ class Settings(BaseSettings):
             return Path(value)
         return value
 
-    @field_validator("ENVIRONMENT")
+    @field_validator("CHUNK_SIZE")
     @classmethod
-    def validate_environment(cls, value):
-        """Validate environment is one of the allowed values."""
-        allowed_environments = {"development", "staging", "production", "test"}
-        if value.lower() not in allowed_environments:
-            raise ValueError(f"Environment must be one of: {allowed_environments}")
-        return value.lower()
+    def validate_chunk_size(cls, value):
+        """Validate chunk size is reasonable."""
+        if value <= 0:
+            raise ValueError("CHUNK_SIZE must be positive")
+        if value < 100:
+            raise ValueError("CHUNK_SIZE should be at least 100 characters")
+        return value
+
+    @field_validator("CHUNK_OVERLAP")
+    @classmethod
+    def validate_chunk_overlap(cls, value):
+        """Validate chunk overlap is reasonable."""
+        if value < 0:
+            raise ValueError("CHUNK_OVERLAP must be non-negative")
+        return value
 
     model_config = {
         "env_file": ".env",
+        "extra": "allow",  # Allow extra fields that aren't explicitly defined here
     }
 
 
 # Global settings instance
-# This is the main way to access settings throughout the application
 settings = Settings()

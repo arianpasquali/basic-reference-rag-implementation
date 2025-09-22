@@ -1,70 +1,76 @@
 # Toyota/Lexus RAG Assistant
 
-A simple RAG assistant that combines vehicle sales data and documents to answer automotive questions. Built with LangGraph, LanceDB, and SQLite.
+A RAG assistant that combines vehicle sales data and documents to answer automotive questions. Built with LangGraph, ChromaDB, and SQLite. LangSmith integration and ready for deployment with Docker.
 
 ## What it does
 
 This assistant can:
 
-- **Context-Aware Responses**: Handles Toyota-specific questions only.
-- **Query Sales Data**: Answer questions about vehicle sales based on SQL database.
-- **Search Documents**: Capable of finding relevant information in manuals, contracts, and warranties documents.
-- **Tool Orchestration**: Capable of answer complex questions combining different tools.
+- **Context-Aware Responses**: Handles Toyota-specific questions only
+- **Query Sales Data**: Answers questions about vehicle sales using SQL database
+- **Search Documents**: Finds relevant information in manuals, contracts, and warranty documents
+- **Tool Orchestration**: Answers complex questions by combining different tools
 
 ## How it works
 
-The assistant uses a multi-step LangGraph workflow with intelligent routing.
-Given the user question and chat history as input this is how the agent works:
-
-**Workflow Steps:**
+The assistant uses a multi-step LangGraph workflow with intelligent routing:
 
 1. **Safety Check**: OpenAI Moderation API filters harmful content
 2. **Query Analysis**: LLM classifies the question type and intent
-3. **Context Aware Routing**: Routes to appropriate response path:
+3. **Context-Aware Routing**: Routes to appropriate response path:
    - **Toyota-specific**: Uses tools (SQL/documents) to answer
    - **Needs clarification**: Asks for more specific information
    - **Off-topic**: Politely redirects to Toyota/Lexus topics
-4. **Tool Loop**: For Toyota questions, iterates between model and tools until complete
+4. **Agentic Tool Loop**: For Toyota questions, iterates between model and tools until complete
 
 ![Agent Architecture](media/agent_architecture.png)
 
 
-## Query Routing & Safety
+## Demo
 
-### Intelligent Query Classification
+### Basic Demo
 
-The assistant uses a multi-step routing system to handle different types of queries:
+Demo showing the agent using semantic search to find relevant documents.
 
-**Toyota-Specific Queries**: Questions about Toyota/Lexus vehicles, sales data, manuals, warranties
-- Routes to tool selection (SQL database or document search)
-- Iterates between model and tools until complete answer is generated
+![Basic Demo](media/demo_optimized.gif)
 
-**Need More Information**: Vague or unclear questions that need clarification
-- Generates specific follow-up questions to guide the user
-- Helps narrow down to actionable Toyota-related queries
+### Sales Data Analysis Demo
 
-**Off-Topic Queries**: General questions unrelated to Toyota/Lexus
-- Provides polite redirection back to Toyota topics
-- Maintains focus on the assistant's domain expertise
+Demo showing the agent using SQL capabilities to query the structured database.
 
-### Safety & Security
+![Sales Data Analysis Demo](media/demo_sales_data_2_optimized.gif)
 
-**Content Moderation**: Uses OpenAI's Moderation API to filter harmful content including sexual content, harassment, hate speech, violence, self-harm, and illicit activities. Flagged content is blocked before processing.
-
-**SQL Injection Protection**:
-- Read-only database connections prevent destructive operations
-- Only SELECT queries allowed - blocks DROP, DELETE, UPDATE, INSERT, CREATE
-- Database rejects any unauthorized statement types
-- Note: For production, consider predefined query methods for maximum security
 
 ## Quick Start
 
 ### Prerequisites
 
-- Python 3.11+
-- OpenAI API key
+- **Option A (Docker)**: Docker and Docker Compose
+- **Option B (Local)**: Python 3.11+ and OpenAI API key
 
-### Setup
+### Option A: Docker Deployment (Recommended)
+
+1. **Create environment file**
+```bash
+cp .env.example .env
+# Edit .env and add your OPENAI_API_KEY
+```
+
+2. **Run with Docker Compose**
+```bash
+docker-compose up --build
+```
+
+3. **Or run with Docker directly**
+```bash
+# Build the image
+docker build -f Dockerfile -t toyota-rag-assistant .
+
+# Run with environment file
+docker run -p 8000:8000 --env-file .env toyota-rag-assistant
+```
+
+### Option B: Local Development
 
 1. **Install dependencies**
 ```bash
@@ -81,8 +87,7 @@ export OPENAI_API_KEY="your-openai-api-key-here"
 make setup-db
 ```
 
-### Run the app
-
+4. **Run the app**
 ```bash
 # Web interface
 make run
@@ -90,6 +95,8 @@ make run
 # Development mode
 make dev
 ```
+
+### Access the Application
 
 Visit `http://localhost:8000` to chat with the assistant.
 
@@ -103,11 +110,15 @@ Visit `http://localhost:8000` to chat with the assistant.
 
 ## Configuration
 
-Only one environment variable needed:
+### Environment Variables
+
+Create a `.env` file in the project root:
+
 ```bash
+# Required
 OPENAI_API_KEY=your-api-key
 
-# optional
+# Optional
 DEFAULT_MODEL="openai/gpt-4.1-mini"
 MAX_SEARCH_RESULTS=10
 ```
@@ -145,55 +156,23 @@ docs/                    # Sample PDF documents
 **Hybrid:**
 - "Compare RAV4 sales and summarize its warranty"
 
-## Document Ingestion Options
+## Document Ingestion
 
-### ChromaDB Pipeline (Enhanced)
-
-For advanced document processing with ChromaDB:
+Ingest PDF documents for semantic retrieval:
 
 ```bash
-# Ensure dependencies are synced
-uv sync
-
-# Quick start with the enhanced pipeline
-cd scripts
-./run_chroma_pipeline.sh demo
-
-# Run tests
-./run_chroma_pipeline.sh test
-
-# Basic ingestion
-./run_chroma_pipeline.sh ingest
-
-# See all options
-./run_chroma_pipeline.sh help
+# Ingest PDFs from ./docs directory
+make setup-embeddings-db
 ```
 
-The enhanced ChromaDB pipeline offers:
-- **Semantic-aware chunking** with configurable overlap
-- **Rich metadata extraction** for better retrieval
-- **Batch processing** with error handling
-- **Multiple configuration presets** (dev/prod/test/hp)
-- **Comprehensive testing** and verification
-
-See [`scripts/README_ChromaDB.md`](scripts/README_ChromaDB.md) for detailed documentation.
-
-### LanceDB Pipeline (Current)
-
-The current implementation uses LanceDB:
-
-```bash
-make setup-db  # Includes LanceDB ingestion
-```
 
 ## Development
+
+### Local Development
 
 ```bash
 # Code quality
 make lint format
-
-# Run tests
-make test
 
 # Debug mode
 make dev  # Opens LangGraph Studio
@@ -201,12 +180,62 @@ make dev  # Opens LangGraph Studio
 
 ![LangGraph Studio Development](media/studio_dev.png)
 
+### Docker Development
+
+```bash
+# Build and run with Docker Compose
+docker-compose up --build
+
+# Rebuild after code changes
+docker-compose down
+docker-compose up --build
+
+# View logs
+docker-compose logs -f toyota-rag-assistant
+
+# Interactive shell for debugging
+docker run -it --env-file .env toyota-rag-assistant /bin/bash
+```
+
 ## Troubleshooting
+
+### Local Development Issues
 
 **Database issues:**
 ```bash
 make setup-db  # Recreate databases
 ```
+
+### Docker Issues
+
+**Container won't start:**
+```bash
+# Check logs
+docker-compose logs toyota-rag-assistant
+
+# Rebuild image
+docker-compose down
+docker-compose up --build
+```
+
+**Environment variables not loading:**
+```bash
+# Verify .env file exists and has correct format
+cat .env
+
+# Check if variables are loaded in container
+docker run --env-file .env toyota-rag-assistant env | grep OPENAI
+```
+
 ---
 
-**Built with**: LangGraph, LanceDB, OpenAI, Chainlit
+**Built with**: Docker, OpenAI, LangGraph, ChromaDB, Chainlit
+
+
+## Next Steps
+
+- **Automated Evaluation**: Build evaluation pipeline for response quality and accuracy
+- **Contextual Retrieval**: Better document chunking with improved summaries
+- **Reranking**: Semantic reranking to improve document retrieval relevance
+- **User Feedback**: Collect user feedback in the UI (thumbs up/down)
+- **Query Suggestions**: Provide intelligent follow-up question recommendations

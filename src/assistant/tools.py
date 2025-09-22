@@ -1,22 +1,21 @@
 """This module provides Toyota RAG tools for document search and SQL queries.
 
 These tools are designed for Toyota/Lexus vehicle information and sales data analysis.
+Uses ChromaDB for semantic document search and SQLite for sales data queries.
 """
 
 import logging
-from pathlib import Path
+import os
 import sqlite3
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
+from langchain_chroma import Chroma
 from langchain_core.tools import tool
+from langchain_openai import OpenAIEmbeddings
 import pandas as pd
 from pydantic import BaseModel, Field
 
 from core.settings import settings
-import lancedb
-
-DEFAULT_DB_PATH = settings.DEFAULT_DB_PATH
-DEFAULT_SQLITE_PATH = settings.DEFAULT_SQLITE_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -29,40 +28,69 @@ class SearchResult(BaseModel):
     chunk_index: int = Field(description="Chunk index within the document")
     content: str = Field(description="Text content of the chunk")
     relevance_score: float = Field(description="Relevance score for the search")
+    chunk_id: str = Field(description="Unique chunk identifier")
 
 
-# Initialize database connections at module level
-try:
-    if Path(DEFAULT_DB_PATH).exists():
-        db = lancedb.connect(DEFAULT_DB_PATH)
-        table = db.open_table("documents")
-        sqlite_conn = sqlite3.connect(f"file:{DEFAULT_SQLITE_PATH}?mode=ro", uri=True)
+# Global variables for lazy initialization
+vectorstore = None
 
-        # Ensure FTS index exists for hybrid search
-        try:
-            # Try to create FTS index on text field (will skip if already exists)
-            table.create_fts_index("text", replace=False)
-            logger.info("BM25+FTS index verified for hybrid search")
-        except Exception as fts_error:
-            if "already exists" in str(fts_error).lower():
-                logger.info("BM25+FTS index already exists")
-            else:
-                logger.warning(f"Could not create BM25+FTS index: {fts_error}")
 
-        logger.info(f"Connected to databases: {DEFAULT_DB_PATH}, {DEFAULT_SQLITE_PATH}")
-    else:
-        # Create dummy connections for import-time compatibility
-        db = None
-        table = None
-        sqlite_conn = None
-        logger.warning(
-            "⚠️ Databases not found, tools will not function until databases are available"
+def _get_vectorstore() -> Optional[Chroma]:
+    """Lazy initialization of ChromaDB vectorstore."""
+    global vectorstore
+
+    if vectorstore is not None:
+        return vectorstore
+
+    try:
+        if not settings.CHROMA_DB_PATH.exists():
+            logger.warning(f"ChromaDB not found at {settings.CHROMA_DB_PATH}")
+            return None
+
+        # Initialize ChromaDB connection
+        embeddings = OpenAIEmbeddings(
+            model=settings.EMBEDDING_MODEL, openai_api_key=os.environ.get("OPENAI_API_KEY")
         )
-except Exception as e:
-    db = None
-    table = None
-    sqlite_conn = None
-    logger.warning(f"⚠️ Failed to connect to databases: {e}")
+
+        vectorstore = Chroma(
+            collection_name=settings.CHROMA_COLLECTION_NAME,
+            embedding_function=embeddings,
+            persist_directory=str(settings.CHROMA_DB_PATH),
+        )
+
+        logger.info(f"Connected to ChromaDB at {settings.CHROMA_DB_PATH}")
+        logger.info(
+            f"ChromaDB collection '{settings.CHROMA_COLLECTION_NAME}' has {vectorstore._collection.count()} documents"
+        )
+        return vectorstore
+
+    except Exception as e:
+        logger.warning(f"Failed to connect to ChromaDB: {e}")
+        return None
+
+
+def _get_sqlite_connection():
+    """Create a new SQLite connection for each request to avoid threading issues.
+
+    This function creates a fresh connection for every request to prevent
+    'SQLite objects created in a thread can only be used in that same thread' errors
+    that occur when the same connection is reused across different conversation turns.
+    """
+    try:
+        # Create a new connection each time to avoid threading issues
+        # check_same_thread=False allows the connection to be used across threads
+        # mode=ro ensures read-only access for safety
+        conn = sqlite3.connect(
+            f"file:{settings.DEFAULT_SQLITE_PATH}?mode=ro",
+            uri=True,
+            check_same_thread=False,
+            timeout=30.0,  # Add timeout to prevent hanging
+        )
+        logger.debug(f"Created new SQLite connection to {settings.DEFAULT_SQLITE_PATH}")
+        return conn
+    except Exception as e:
+        logger.warning(f"Failed to connect to SQLite: {e}")
+        return None
 
 
 @tool(
@@ -70,73 +98,41 @@ except Exception as e:
 
 IMPORTANT: When you use this tool to answer a question, you MUST:
 1. Provide a comprehensive answer based on the retrieved content
-2. Always cite your sources at the end of your response using this format:
-
-**Sources:**
-- [Document Name, Page X]
-- [Document Name, Page Y]
-
-Example response format:
-"According to the warranty policy, [your answer here based on retrieved content].
-
-**Sources:**
-- [Warranty_Policy_Appendix.pdf, Page 5]
-- [Contract_Toyota_2023.pdf, Page 12]"
 
 Args:
     query: The search query string
-    limit: Maximum number of results to return (default: 5)
+    limit: Maximum number of results to return (default: 10)
 Returns:
     List of relevant document chunks with metadata including filename and page numbers for citation"""
 )
-def search_documents(query: str, limit: int = 5) -> List[SearchResult]:
-    if not table:
+def search_documents(query: str, limit: int = settings.MAX_SEARCH_RESULTS) -> List[SearchResult]:
+    vectorstore = _get_vectorstore()
+    if not vectorstore:
         return []
     try:
-        # Use hybrid search which combines vector (semantic) and full-text search
-        # This uses both OpenAI embeddings and BM25 scoring with RRF ranking
-        results = (
-            table.search(
-                query, query_type="hybrid", vector_column_name="vector", fts_columns=["text"]
-            )
-            .limit(limit)
-            .to_pandas()
-        )
+        # Use ChromaDB similarity search with scores
+        results_with_scores = vectorstore.similarity_search_with_score(query=query, k=limit)
         search_results = []
-        for _, row in results.iterrows():
+
+        for doc, score in results_with_scores:
+            # Extract metadata from the document
+            metadata = doc.metadata
             result = SearchResult(
-                filename=row["filename"],
-                page=int(row["page"]),
-                chunk_index=int(row["chunk_index"]),
-                content=row["text"],
-                relevance_score=float(row.get("_relevance_score", row.get("_distance", 0.0))),
+                filename=metadata.get("filename", "Unknown"),
+                page=int(metadata.get("page_number", metadata.get("page", 0))),
+                chunk_index=int(metadata.get("chunk_index", 0)),
+                content=doc.page_content,
+                relevance_score=float(1.0 - score),  # Convert distance to similarity score
+                chunk_id=metadata.get("chunk_id", ""),
             )
             search_results.append(result)
-        logger.info(f"Hybrid search found {len(search_results)} results for query: '{query}'")
+
+        logger.info(f"ChromaDB search found {len(search_results)} results for query: '{query}'")
         return search_results
+
     except Exception as e:
-        logger.error(f"Hybrid search error: {e}")
-        # Fallback to vector search if hybrid fails
-        try:
-            logger.info("Falling back to vector search...")
-            results = (
-                table.search(query, query_type="fts", fts_columns=["text"]).limit(limit).to_pandas()
-            )
-            search_results = []
-            for _, row in results.iterrows():
-                result = SearchResult(
-                    filename=row["filename"],
-                    page=int(row["page"]),
-                    chunk_index=int(row["chunk_index"]),
-                    content=row["text"],
-                    relevance_score=float(row.get("_distance", 0.0)),
-                )
-                search_results.append(result)
-            logger.info(f"📊 Vector search found {len(search_results)} results as fallback")
-            return search_results
-        except Exception as fallback_error:
-            logger.error(f"Vector search fallback also failed: {fallback_error}")
-            return []
+        logger.error(f"ChromaDB search error: {e}")
+        return []
 
 
 @tool(
@@ -212,18 +208,23 @@ def execute_sql(query: str) -> str:
 
 def _sync_execute_sql(query: str) -> str:
     """Synchronous SQL execution helper."""
+    conn = None
     try:
-        # TODO: Workaround. Force correct common table name mistakes
+        # TODO: This is a workaround. Force correct common table name mistakes. To be improved with proper test suite.
         corrected_query = query.replace("sales_data", "fact_sales")
 
-        conn = sqlite3.connect(
-            f"file:{DEFAULT_SQLITE_PATH}?mode=ro", uri=True, check_same_thread=False
-        )
+        conn = _get_sqlite_connection()
+        if not conn:
+            return "SQL execution error: Could not connect to database"
+
         df = pd.read_sql_query(corrected_query, conn)
-        conn.close()
         return df.to_string(index=False)
     except Exception as e:
         return f"SQL execution error: {e}"
+    finally:
+        # Always close the connection to prevent resource leaks
+        if conn:
+            conn.close()
 
 
 @tool
@@ -239,10 +240,12 @@ def get_sql_schema() -> str:
 
 def _sync_get_schema() -> str:
     """Synchronous schema retrieval helper."""
+    conn = None
     try:
-        conn = sqlite3.connect(
-            f"file:{DEFAULT_SQLITE_PATH}?mode=ro", uri=True, check_same_thread=False
-        )
+        conn = _get_sqlite_connection()
+        if not conn:
+            return "Error retrieving schema: Could not connect to database"
+
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
         tables = [row[0] for row in cursor.fetchall()]
@@ -253,10 +256,13 @@ def _sync_get_schema() -> str:
             columns = cursor.fetchall()
             for col in columns:
                 schema_str += f"  - {col[1]} ({col[2]})\n"
-        conn.close()
         return schema_str.strip()
     except Exception as e:
         return f"Error retrieving schema: {e}"
+    finally:
+        # Always close the connection to prevent resource leaks
+        if conn:
+            conn.close()
 
 
 @tool
@@ -266,26 +272,41 @@ def list_available_documents() -> List[Dict[str, Any]]:
     Returns:
         List of document information including filename, pages, and chunks
     """
-    if not table:
+    vectorstore = _get_vectorstore()
+    if not vectorstore:
         return []
     try:
-        df = table.to_pandas()
-        file_stats = (
-            df.groupby("filename")
-            .agg({"chunk_index": "count", "char_count": "sum", "page": "nunique"})
-            .rename(columns={"chunk_index": "chunks", "page": "pages"})
-        )
+        # Get a sample of documents to analyze metadata
+        sample_docs = vectorstore.similarity_search("document", k=100)  # Get larger sample
+
+        # Organize by filename
+        file_stats = {}
+        for doc in sample_docs:
+            metadata = doc.metadata
+            filename = metadata.get("filename", "Unknown")
+            page = metadata.get("page_number", metadata.get("page", 0))
+
+            if filename not in file_stats:
+                file_stats[filename] = {"pages": set(), "chunks": 0, "total_characters": 0}
+
+            file_stats[filename]["pages"].add(page)
+            file_stats[filename]["chunks"] += 1
+            file_stats[filename]["total_characters"] += len(doc.page_content)
+
+        # Convert to list format
         documents = []
-        for filename, stats in file_stats.iterrows():
+        for filename, stats in file_stats.items():
             doc_info = {
                 "filename": filename,
-                "pages": int(stats["pages"]),
-                "chunks": int(stats["chunks"]),
-                "total_characters": int(stats["char_count"]),
+                "pages": len(stats["pages"]),
+                "chunks": stats["chunks"],
+                "total_characters": stats["total_characters"],
             }
             documents.append(doc_info)
+
         logger.info(f"Listed {len(documents)} available documents")
         return documents
+
     except Exception as e:
         logger.error(f"Error listing documents: {e}")
         return []
@@ -296,18 +317,6 @@ def list_available_documents() -> List[Dict[str, Any]]:
 
 IMPORTANT: When you use this tool to answer a question, you MUST:
 1. Provide a comprehensive answer based on the retrieved content from the specified document
-2. Always cite your source at the end of your response using this format:
-
-**Source:**
-- [Document Name, Page X]
-- [Document Name, Page Y]
-
-Example response format:
-"Based on the Toyota contract, [your answer here based on retrieved content].
-
-**Source:**
-- [Contract_Toyota_2023.pdf, Page 8]
-- [Contract_Toyota_2023.pdf, Page 15]"
 
 Args:
     filename: Name of the document to search in
@@ -317,50 +326,43 @@ Returns:
     List of relevant chunks from the specified document with page numbers for citation"""
 )
 def search_in_document(filename: str, query: str, limit: int = 3) -> List[SearchResult]:
-    if not table:
+    vectorstore = _get_vectorstore()
+    if not vectorstore:
         return []
     try:
-        # Use hybrid search for better semantic + keyword matching within specific document
-        all_results = table.search(query, query_type="hybrid").limit(50).to_pandas()
-        filtered_results = all_results[all_results["filename"] == filename].head(limit)
+        # Get more results to filter by filename
+        results_with_scores = vectorstore.similarity_search_with_score(query=query, k=20)
+
+        # Filter results by filename and take top matches
+        filtered_results = []
+        for doc, score in results_with_scores:
+            doc_filename = doc.metadata.get("filename", "")
+            if filename.lower() in doc_filename.lower() or doc_filename.lower() in filename.lower():
+                filtered_results.append((doc, score))
+                if len(filtered_results) >= limit:
+                    break
+
         search_results = []
-        for _, row in filtered_results.iterrows():
+        for doc, score in filtered_results:
+            metadata = doc.metadata
             result = SearchResult(
-                filename=row["filename"],
-                page=int(row["page"]),
-                chunk_index=int(row["chunk_index"]),
-                content=row["text"],
-                relevance_score=float(row.get("_relevance_score", row.get("_distance", 0.0))),
+                filename=metadata.get("filename", "Unknown"),
+                page=int(metadata.get("page_number", metadata.get("page", 0))),
+                chunk_index=int(metadata.get("chunk_index", 0)),
+                content=doc.page_content,
+                relevance_score=float(1.0 - score),  # Convert distance to similarity score
+                chunk_id=metadata.get("chunk_id", ""),
             )
             search_results.append(result)
+
         logger.info(
-            f"🔍 Hybrid search found {len(search_results)} results in {filename} for query: '{query}'"
+            f"🔍 ChromaDB search found {len(search_results)} results in {filename} for query: '{query}'"
         )
         return search_results
+
     except Exception as e:
-        logger.error(f"Hybrid search error in document {filename}: {e}")
-        # Fallback to vector search if hybrid fails
-        try:
-            logger.info(f"Falling back to vector search for document {filename}...")
-            all_results = table.search(query, query_type="vector").limit(50).to_pandas()
-            filtered_results = all_results[all_results["filename"] == filename].head(limit)
-            search_results = []
-            for _, row in filtered_results.iterrows():
-                result = SearchResult(
-                    filename=row["filename"],
-                    page=int(row["page"]),
-                    chunk_index=int(row["chunk_index"]),
-                    content=row["text"],
-                    relevance_score=float(row.get("_distance", 0.0)),
-                )
-                search_results.append(result)
-            logger.info(
-                f"📊 Vector search found {len(search_results)} results in {filename} as fallback"
-            )
-            return search_results
-        except Exception as fallback_error:
-            logger.error(f"Vector search fallback also failed for {filename}: {fallback_error}")
-            return []
+        logger.error(f"ChromaDB search error in document {filename}: {e}")
+        return []
 
 
 # Expose tools for LangGraph
@@ -373,16 +375,49 @@ TOOLS: List[Callable[..., Any]] = [
 ]
 
 
-def create_toyota_tools(db_path: str = DEFAULT_DB_PATH, sqlite_path: str = DEFAULT_SQLITE_PATH):
-    """
-    Create Toyota-specific tools for document search and SQL queries.
-    This function is kept for backward compatibility.
+# def create_toyota_tools(chroma_db_path: str = str(CHROMA_DB_PATH), sqlite_path: str = str(DEFAULT_SQLITE_PATH)):
+#     """
+#     Create Toyota-specific tools for document search and SQL queries.
+#     This function is kept for backward compatibility.
 
-    Args:
-        db_path: Path to LanceDB database
-        sqlite_path: Path to SQLite database
+#     Args:
+#         chroma_db_path: Path to ChromaDB database directory
+#         sqlite_path: Path to SQLite database
+
+#     Returns:
+#         List of tools for the agent
+#     """
+#     return TOOLS
+
+
+def get_vectorstore() -> Optional[Chroma]:
+    """
+    Get the ChromaDB vectorstore instance.
 
     Returns:
-        List of tools for the agent
+        ChromaDB vectorstore instance or None if not available
     """
-    return TOOLS
+    return _get_vectorstore()
+
+
+def get_collection_stats() -> Dict[str, Any]:
+    """
+    Get statistics about the ChromaDB collection.
+
+    Returns:
+        Dictionary containing collection statistics
+    """
+    vectorstore = _get_vectorstore()
+    if not vectorstore:
+        return {"error": "ChromaDB not available"}
+
+    try:
+        collection = vectorstore._collection
+        return {
+            "collection_name": settings.CHROMA_COLLECTION_NAME,
+            "total_documents": collection.count(),
+            "embedding_model": settings.EMBEDDING_MODEL,
+            "database_path": str(settings.CHROMA_DB_PATH),
+        }
+    except Exception as e:
+        return {"error": f"Failed to get collection stats: {e}"}
