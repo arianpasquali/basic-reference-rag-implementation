@@ -183,4 +183,3 @@ databases.zip
 
 # Chainlit auto-generated files
 .chainlit/translations/
-.chainlit/config.toml

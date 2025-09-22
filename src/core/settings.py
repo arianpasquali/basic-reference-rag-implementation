@@ -56,6 +56,24 @@ class Settings(BaseSettings):
         env="CHROMA_COLLECTION_NAME",
     )
 
+    CHROMA_API_KEY: str = Field(
+        default="",
+        description="ChromaDB API key for cloud deployment (optional)",
+        env="CHROMA_API_KEY",
+    )
+
+    CHROMA_TENANT_ID: str = Field(
+        default="default_tenant",
+        description="ChromaDB tenant ID for cloud deployment",
+        env="CHROMA_TENANT_ID",
+    )
+
+    CHROMA_DATABASE_NAME: str = Field(
+        default="rag-reference-demo",
+        description="ChromaDB database name",
+        env="CHROMA_DATABASE_NAME",
+    )
+
     EMBEDDING_MODEL: str = Field(
         default="text-embedding-3-small",
         description="OpenAI embedding model for ChromaDB",

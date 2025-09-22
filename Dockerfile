@@ -6,11 +6,12 @@ WORKDIR /app
 ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
 ENV UV_COMPILE_BYTECODE=1
 
-# Install system dependencies including make and sqlite3
+# Install system dependencies including make, sqlite3, and unzip
 RUN apt-get update && apt-get install -y \
     vim \
     make \
     sqlite3 \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
@@ -33,6 +34,7 @@ COPY public/ ./public/
 
 # Copy PDF files to public directory for web access
 RUN cp docs/*.pdf public/ 2>/dev/null || true
+
 COPY chainlit.md ./
 COPY Makefile ./
 
@@ -42,6 +44,8 @@ EXPOSE 8000
 # Set environment variable for Chainlit
 ENV CHAINLIT_HOST=0.0.0.0
 ENV CHAINLIT_PORT=8000
+
+RUN make setup-structured-db
 
 # Run the Chainlit application
 CMD ["uv", "run", "chainlit", "run", "src/chainlit_app.py", "--host", "0.0.0.0", "--port", "8000"]

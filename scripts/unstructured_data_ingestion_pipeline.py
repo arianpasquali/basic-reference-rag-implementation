@@ -20,6 +20,7 @@ import sys
 from typing import Any, Dict, List, Optional, Tuple
 import warnings
 
+import chromadb
 from dotenv import load_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
@@ -152,11 +153,34 @@ class ChromaPDFIngestionPipeline:
             self._setup_embeddings()
 
         try:
-            vectorstore = Chroma(
-                collection_name=self.collection_name,
-                embedding_function=self.embeddings,
-                persist_directory=self.persist_directory,
-            )
+            if settings.CHROMA_API_KEY and settings.CHROMA_API_KEY.strip():
+                # Use ChromaDB Cloud
+                logger.info("Initializing ChromaDB Cloud client...")
+                chroma_client = chromadb.CloudClient(
+                    api_key=settings.CHROMA_API_KEY,
+                    tenant=settings.CHROMA_TENANT_ID,
+                    database=settings.CHROMA_DATABASE_NAME,
+                )
+                vectorstore = Chroma(
+                    client=chroma_client,
+                    collection_name=self.collection_name,
+                    embedding_function=self.embeddings,
+                )
+                logger.info(
+                    f"ChromaDB Cloud client initialized with collection: {self.collection_name}"
+                )
+            else:
+                # Use local ChromaDB
+                logger.info(f"Initializing local ChromaDB client at: {settings.CHROMA_DB_PATH}")
+                vectorstore = Chroma(
+                    collection_name=self.collection_name,
+                    embedding_function=self.embeddings,
+                    persist_directory=str(self.persist_directory),
+                )
+                logger.info(
+                    f"Local ChromaDB client initialized with collection: {self.collection_name}"
+                )
+
             return vectorstore
         except Exception as e:
             logger.error(f"Failed to initialize vector store: {e}")
@@ -318,16 +342,56 @@ class ChromaPDFIngestionPipeline:
             all_chunks.extend(chunks)
             processing_results.append(stats)
 
-        # Batch add documents to ChromaDB
+        # Batch add documents to ChromaDB with size limits
         if all_chunks:
             try:
                 # Generate unique IDs for chunks
                 chunk_ids = [chunk.metadata["chunk_id"] for chunk in all_chunks]
 
-                # Add documents to vector store
-                vectorstore.add_documents(documents=all_chunks, ids=chunk_ids)
+                # Determine batch size based on ChromaDB type and quota limits
+                if settings.CHROMA_API_KEY and settings.CHROMA_API_KEY.strip():
+                    max_batch_size = 100  # ChromaDB Cloud conservative limit (respecting quota)
+                    logger.warning(
+                        "⚠️  Using ChromaDB Cloud with quota limits. Consider upgrading plan for larger datasets."
+                    )
+                else:
+                    max_batch_size = 5000  # Local ChromaDB can handle larger batches
 
-                logger.info(f"Successfully added {len(all_chunks)} chunks to ChromaDB")
+                total_chunks = len(all_chunks)
+                logger.info(
+                    f"Adding {total_chunks} chunks to ChromaDB in batches of {max_batch_size}"
+                )
+
+                # Process documents in batches
+                for i in range(0, total_chunks, max_batch_size):
+                    end_idx = min(i + max_batch_size, total_chunks)
+                    batch_docs = all_chunks[i:end_idx]
+                    batch_ids = chunk_ids[i:end_idx]
+
+                    logger.info(
+                        f"Processing batch {i // max_batch_size + 1}: documents {i + 1}-{end_idx}"
+                    )
+
+                    # Add batch to vector store
+                    try:
+                        vectorstore.add_documents(documents=batch_docs, ids=batch_ids)
+                        logger.info(
+                            f"Successfully added batch {i // max_batch_size + 1} ({len(batch_docs)} chunks)"
+                        )
+                    except Exception as batch_error:
+                        if "Quota exceeded" in str(batch_error):
+                            logger.error(
+                                f"❌ ChromaDB Cloud quota exceeded in batch {i // max_batch_size + 1}"
+                            )
+                            logger.error("💡 Consider:")
+                            logger.error("   - Upgrading your ChromaDB Cloud plan")
+                            logger.error("   - Using local ChromaDB (unset CHROMA_API_KEY)")
+                            logger.error("   - Processing fewer documents at a time")
+                            raise
+                        else:
+                            raise batch_error
+
+                logger.info(f"✅ Successfully added all {total_chunks} chunks to ChromaDB")
 
             except Exception as e:
                 logger.error(f"Failed to add documents to ChromaDB: {e}")

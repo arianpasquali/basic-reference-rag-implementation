@@ -26,6 +26,8 @@ This assistant uses:
 - **SQL Tools** for structured sales data queries
 - **RAG Tools** for unstructured document search
 
+![Agent Architecture](agent_architecture.png)
+
 #### Security Trade-offs
 
 - **Input Guardrails**: OpenAI Moderation API filters all incoming messages before processing. It is a simple solution given the time constraints. It is the very minimum we need to have for the majority of the applications.

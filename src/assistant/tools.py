@@ -36,32 +36,60 @@ vectorstore = None
 
 
 def _get_vectorstore() -> Optional[Chroma]:
-    """Lazy initialization of ChromaDB vectorstore."""
+    """Lazy initialization of ChromaDB vectorstore with support for both local and cloud."""
     global vectorstore
 
     if vectorstore is not None:
         return vectorstore
 
     try:
-        if not settings.CHROMA_DB_PATH.exists():
-            logger.warning(f"ChromaDB not found at {settings.CHROMA_DB_PATH}")
-            return None
-
-        # Initialize ChromaDB connection
+        # Initialize embeddings
         embeddings = OpenAIEmbeddings(
             model=settings.EMBEDDING_MODEL, openai_api_key=os.environ.get("OPENAI_API_KEY")
         )
 
-        vectorstore = Chroma(
-            collection_name=settings.CHROMA_COLLECTION_NAME,
-            embedding_function=embeddings,
-            persist_directory=str(settings.CHROMA_DB_PATH),
-        )
+        if settings.CHROMA_API_KEY and settings.CHROMA_API_KEY.strip():
+            # Use ChromaDB Cloud
+            logger.info("Connecting to ChromaDB Cloud...")
+            import chromadb
 
-        logger.info(f"Connected to ChromaDB at {settings.CHROMA_DB_PATH}")
-        logger.info(
-            f"ChromaDB collection '{settings.CHROMA_COLLECTION_NAME}' has {vectorstore._collection.count()} documents"
-        )
+            chroma_client = chromadb.CloudClient(
+                api_key=settings.CHROMA_API_KEY,
+                tenant=settings.CHROMA_TENANT_ID,
+                database=settings.CHROMA_DATABASE_NAME,
+            )
+
+            vectorstore = Chroma(
+                client=chroma_client,
+                collection_name=settings.CHROMA_COLLECTION_NAME,
+                embedding_function=embeddings,
+            )
+            logger.info(
+                f"Connected to ChromaDB Cloud - collection: {settings.CHROMA_COLLECTION_NAME}"
+            )
+
+        else:
+            # Use local ChromaDB
+            if not settings.CHROMA_DB_PATH.exists():
+                logger.warning(f"Local ChromaDB not found at {settings.CHROMA_DB_PATH}")
+                return None
+
+            vectorstore = Chroma(
+                collection_name=settings.CHROMA_COLLECTION_NAME,
+                embedding_function=embeddings,
+                persist_directory=str(settings.CHROMA_DB_PATH),
+            )
+            logger.info(f"Connected to local ChromaDB at {settings.CHROMA_DB_PATH}")
+
+        # Get document count for logging
+        try:
+            doc_count = vectorstore._collection.count()
+            logger.info(
+                f"ChromaDB collection '{settings.CHROMA_COLLECTION_NAME}' has {doc_count} documents"
+            )
+        except Exception as count_e:
+            logger.debug(f"Could not get document count: {count_e}")
+
         return vectorstore
 
     except Exception as e:
