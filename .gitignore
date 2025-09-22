@@ -167,8 +167,7 @@ logs/
 secrets.txt
 api_keys.txt
 
-# Chainlit
-.chainlit/
+.chainlit/translations/*
 
 # LangGraph
 .langgraph/
@@ -178,3 +177,10 @@ api_keys.txt
 
 # Ruff cache
 .ruff_cache/
+
+# Database archives (created for Docker builds)
+databases.zip
+
+# Chainlit auto-generated files
+.chainlit/translations/
+.chainlit/config.toml
