@@ -25,5 +25,3 @@ This assistant uses:
 - **OpenAI Moderation** for content safety filtering
 - **SQL Tools** for structured sales data queries
 - **RAG Tools** for unstructured document search
-
-![Agent Architecture](media/agent_architecture.png)
