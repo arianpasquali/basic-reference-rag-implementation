@@ -18,6 +18,7 @@ from pathlib import Path
 import shutil
 import sys
 from typing import Any, Dict, List, Optional, Tuple
+import warnings
 
 from dotenv import load_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -40,6 +41,10 @@ logging.basicConfig(
     handlers=[logging.FileHandler("chroma_ingestion.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
+
+# Suppress PyPDF warnings about deprecated features
+
+warnings.filterwarnings("ignore", category=UserWarning, module="pypdf._reader")
 
 
 class ChromaPDFIngestionPipeline:
