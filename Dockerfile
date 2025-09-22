@@ -6,9 +6,10 @@ WORKDIR /app
 ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
 ENV UV_COMPILE_BYTECODE=1
 
-# Install system dependencies including make
+# Install system dependencies including make and sqlite3
 RUN apt-get update && apt-get install -y \
     make \
+    sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
@@ -31,6 +32,7 @@ COPY public/ ./public/
 COPY chainlit.md ./
 COPY .chainlit ./
 COPY Makefile ./
+COPY startup.sh ./
 
 # Expose Chainlit default port
 EXPOSE 8000
@@ -39,8 +41,8 @@ EXPOSE 8000
 ENV CHAINLIT_HOST=0.0.0.0
 ENV CHAINLIT_PORT=8000
 
-RUN make setup-structured-db
-RUN make setup-embeddings-db
+# Make startup script executable
+RUN chmod +x startup.sh
 
-# Run the Chainlit application
-CMD ["uv", "run", "chainlit", "run", "src/chainlit_app.py", "--host", "0.0.0.0", "--port", "8000"]
+# Use startup script as entrypoint
+CMD ["./startup.sh"]
