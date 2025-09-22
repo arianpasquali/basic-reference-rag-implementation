@@ -178,6 +178,3 @@ api_keys.txt
 
 # Ruff cache
 .ruff_cache/
-# Ignore large PDF files
-docs/Yaris-Cross-user-manual.pdf
-docs/TOYOTA-CHR-user-manual.pdf
