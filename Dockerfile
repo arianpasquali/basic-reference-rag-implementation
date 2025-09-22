@@ -30,9 +30,7 @@ COPY scripts/ ./scripts/
 COPY resources/ ./resources/
 COPY public/ ./public/
 COPY chainlit.md ./
-COPY .chainlit ./
 COPY Makefile ./
-COPY startup.sh ./
 
 # Expose Chainlit default port
 EXPOSE 8000
@@ -41,8 +39,5 @@ EXPOSE 8000
 ENV CHAINLIT_HOST=0.0.0.0
 ENV CHAINLIT_PORT=8000
 
-# Make startup script executable
-RUN chmod +x startup.sh
-
-# Use startup script as entrypoint
-CMD ["./startup.sh"]
+# Run the Chainlit application
+CMD ["uv", "run", "chainlit", "run", "src/chainlit_app.py", "--host", "0.0.0.0", "--port", "8000"]
