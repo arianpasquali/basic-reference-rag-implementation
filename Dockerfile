@@ -33,14 +33,14 @@ COPY .chainlit ./
 COPY Makefile ./
 
 # Expose Chainlit default port
-EXPOSE 80
+EXPOSE 8000
 
 # Set environment variable for Chainlit
 ENV CHAINLIT_HOST=0.0.0.0
-ENV CHAINLIT_PORT=80
+ENV CHAINLIT_PORT=8000
 
 RUN make setup-structured-db
 # RUN make setup-embeddings-db
 
 # Run the Chainlit application
-CMD ["uv", "run", "chainlit", "run", "src/chainlit_app.py", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uv", "run", "chainlit", "run", "src/chainlit_app.py", "--host", "0.0.0.0", "--port", "8000"]
