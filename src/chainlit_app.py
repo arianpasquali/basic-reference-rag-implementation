@@ -2,27 +2,24 @@
 """
 Chainlit UI for Toyota/Lexus Assistant.
 
-This module provides a Chainlit-based web interface for the Toyota/Lexus RAG assistant.
-It maintains conversation history to enable multi-turn conversations with the LangGraph agent.
+This is the Chainlit-based web interface for the Toyota/Lexus RAG assistant.
+It supports basic multi-turn conversations with the LangGraph agent.
 
 Key features:
-- Maintains conversation history in user session
 - Passes complete message history to LangGraph agent for context-aware responses
 - Supports streaming responses from the agent
-- Tracks conversation state across multiple user interactions
+- Streams the nodes and tool calls from the agent
+- Supports PDF display functionality for the documents retrieved
 """
 
 import logging
 from pathlib import Path
 
 import chainlit as cl
-
-# Add src directory to path to import the agent
-# sys.path.append(str(Path(__file__).parent))
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 
-from assistant import graph
+from assistant import graph as agent
 from assistant.context import Context
 from assistant.utils import load_starters_from_csv
 from core.settings import settings
@@ -40,7 +37,7 @@ logging.getLogger("openai._base_client").setLevel(logging.WARNING)
 
 
 def create_pdf_elements_from_retrieved_docs(retrieved_documents, docs_dir):
-    """Create PDF elements from retrieved documents in state instead of parsing citations."""
+    """Chainlit has a special primitive for PDF links, This creates the links based on the retrieved documents saved in the state"""
     import chainlit as cl
     from langchain_core.documents import Document
 
@@ -53,7 +50,6 @@ def create_pdf_elements_from_retrieved_docs(retrieved_documents, docs_dir):
             filename = metadata.get("filename", "")
             page = metadata.get("page", 0)
 
-            # Only process PDF files
             if not filename.endswith(".pdf"):
                 continue
 
@@ -76,6 +72,7 @@ def create_pdf_elements_from_retrieved_docs(retrieved_documents, docs_dir):
                     # Create a display name for the PDF element
                     display_name = f"{filename.replace('.pdf', '')} (Page {page})"
 
+                    # Chainlit pdf link
                     pdf_element = cl.Pdf(
                         name=display_name, display="side", path=str(pdf_path), page=page
                     )
@@ -112,7 +109,7 @@ async def set_starters():
 
     except Exception as e:
         logger.error(f"Error loading starters from csv file: {e}")
-        # Fallback to a basic starter if CSV loading fails
+        # Just show something simple if the CSV loading fails
         return [
             cl.Starter(
                 label="Toyota vs Lexus warranty",
@@ -131,15 +128,12 @@ async def start():
     try:
         logger.info("Starting new chat session")
 
-        # Initialize context for the agent (uses default system prompt from prompts.py)
+        # Initialize agent with the system prompt
         context = Context(model=settings.DEFAULT_MODEL)
 
         logger.info(f"Context initialized with model: {context.model}")
 
-        # Initialize the agent (graph is already compiled)
-        agent = graph
-
-        # Initialize conversation history storage
+        # Initialize conversation history
         conversation_history = []
 
         # Store in session for use in message handler
@@ -147,13 +141,13 @@ async def start():
         cl.user_session.set("context", context)
         cl.user_session.set("conversation_history", conversation_history)
 
-        logger.info("Agent, context, and conversation history stored in session successfully")
+        logger.info("Agent, context, and conversation history stored in the session successfully")
         logger.info("Chat session initialization complete")
 
     except Exception as e:
         logger.error(f"Error during chat initialization: {e}")
         await cl.Message(
-            content=f"**Error:** Failed to initialize agent: {e!s}\n\n"
+            content=f"**Error:** Failed to initialize the agent: {e!s}\n\n"
             f"Please refresh the page and try again."
         ).send()
 
@@ -197,6 +191,7 @@ async def on_message(message: cl.Message):
             if stream_type == "messages":
                 msg, metadata = content
                 # Stream tokens from final response nodes
+                # We are just interested in the final response nodes to stream the tokens
                 if (
                     msg.content
                     and not isinstance(msg, HumanMessage)
@@ -207,7 +202,12 @@ async def on_message(message: cl.Message):
                     assistant_response_content += msg.content
 
             elif stream_type == "values":
-                # Capture state updates, particularly retrieved_documents
+                # Capture state updates, particularly retrieved_documents.
+                # We are going to use this to create the PDF links
+                # Important: We are showing all the documents that were retrieved. It doesn't mean that all of them are relevant.
+                #   Due to latency and for the sake of simplicity we are showing them here to demonstrate the feature.
+                #   Ideally we would have a relevancy assessment or reranker and filter out those documents that are not relevant.
+
                 state_update = content
                 if "retrieved_documents" in state_update:
                     retrieved_documents = state_update["retrieved_documents"]
@@ -220,6 +220,10 @@ async def on_message(message: cl.Message):
         logger.info(f"Found {len(retrieved_documents)} retrieved documents in state")
 
         # Get the documents directory path - use public for web deployments
+        # Important:By default Chainlit serves the files under the public directory as static files.
+        # Good for a prototype but not for production environment.
+        # Ideally this would be server with something like blobstorage or s3 bucket with proper access control and permissions.
+        # More requirements constraints are necessary to consider what would be the best approach for production environment.
         docs_dir = Path(__file__).parent.parent / "public"
 
         # Create PDF elements from retrieved documents (no text parsing needed!)

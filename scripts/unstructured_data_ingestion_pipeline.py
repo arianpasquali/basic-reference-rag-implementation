@@ -8,6 +8,15 @@ Pipeline for ingesting PDF documents into ChromaDB with:
 - Error handling and logging
 - Batch processing capabilities
 - Verification and testing functions
+
+Features chosen for the sake of simplicity and time constraints for the PoC.
+For a production environment, there are many more features that could be added.
+    - Contextual Retrieval
+    - Metadata enrichment
+    - Summarization
+    - Document filtering
+    etc ...
+
 """
 
 from datetime import datetime
@@ -43,14 +52,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Suppress PyPDF warnings about deprecated features
-
+# FIXME: Ignore PyPDF warnings about deprecated features. Consider upgrading to new version of PyPDF. Need of time to test it.
 warnings.filterwarnings("ignore", category=UserWarning, module="pypdf._reader")
 
 
 class ChromaPDFIngestionPipeline:
     """
-    Enhanced PDF ingestion pipeline for ChromaDB with comprehensive features.
+    Simple PDF ingestion pipeline for ChromaDB.
     """
 
     def __init__(
@@ -102,7 +110,7 @@ class ChromaPDFIngestionPipeline:
         Path(self.persist_directory).mkdir(parents=True, exist_ok=True)
 
     def _setup_text_splitter(self) -> None:
-        """Initialize the text splitter with semantic-aware settings."""
+        """Initialize simple text splitter with semantic-aware settings."""
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size,
             chunk_overlap=self.chunk_overlap,
@@ -125,7 +133,7 @@ class ChromaPDFIngestionPipeline:
         )
 
     def _setup_embeddings(self) -> None:
-        """Initialize OpenAI embeddings."""
+        """Initialize basic OpenAI embeddings."""
         if not self.openai_api_key:
             logger.warning("OpenAI API key not found. Embeddings will be initialized when needed.")
             self.embeddings = None
@@ -191,7 +199,7 @@ class ChromaPDFIngestionPipeline:
 
     def _extract_pdf_metadata(self, file_path: str, document: Document) -> Dict[str, Any]:
         """
-        Extract comprehensive metadata from PDF document.
+        Extract basic metadata from PDF file.
 
         Args:
             file_path: Path to the PDF file
@@ -231,7 +239,7 @@ class ChromaPDFIngestionPipeline:
         return metadata
 
     def _calculate_file_hash(self, file_path: str) -> str:
-        """Calculate SHA-256 hash of file for deduplication."""
+        """Calculate SHA-256 hash of file for simplededuplication."""
         hash_sha256 = hashlib.sha256()
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
@@ -240,7 +248,7 @@ class ChromaPDFIngestionPipeline:
 
     def _process_single_pdf(self, file_path: str) -> Tuple[List[Document], Dict[str, Any]]:
         """
-        Process a single PDF file into chunks with metadata.
+        Process a single PDF file into chunks with basic metadata.
 
         Args:
             file_path: Path to the PDF file
@@ -350,12 +358,12 @@ class ChromaPDFIngestionPipeline:
 
                 # Determine batch size based on ChromaDB type and quota limits
                 if settings.CHROMA_API_KEY and settings.CHROMA_API_KEY.strip():
-                    max_batch_size = 100  # ChromaDB Cloud conservative limit (respecting quota)
+                    max_batch_size = 100  # respecting ChromaDB Cloud quota
                     logger.warning(
-                        "⚠️  Using ChromaDB Cloud with quota limits. Consider upgrading plan for larger datasets."
+                        "Using ChromaDB Cloud with quota limits. Consider upgrading plan for larger datasets."
                     )
                 else:
-                    max_batch_size = 5000  # Local ChromaDB can handle larger batches
+                    max_batch_size = 1000  # Local ChromaDB can handle larger batches
 
                 total_chunks = len(all_chunks)
                 logger.info(
@@ -381,17 +389,19 @@ class ChromaPDFIngestionPipeline:
                     except Exception as batch_error:
                         if "Quota exceeded" in str(batch_error):
                             logger.error(
-                                f"❌ ChromaDB Cloud quota exceeded in batch {i // max_batch_size + 1}"
+                                f"ChromaDB Cloud quota exceeded in batch {i // max_batch_size + 1}"
                             )
-                            logger.error("💡 Consider:")
-                            logger.error("   - Upgrading your ChromaDB Cloud plan")
-                            logger.error("   - Using local ChromaDB (unset CHROMA_API_KEY)")
+                            logger.error("Consider:")
                             logger.error("   - Processing fewer documents at a time")
+                            logger.error("   - Upgrading your ChromaDB Cloud plan")
+                            logger.error(
+                                "   - Using local ChromaDB (just need to unset CHROMA_API_KEY environment variable)"
+                            )
                             raise
                         else:
                             raise batch_error
 
-                logger.info(f"✅ Successfully added all {total_chunks} chunks to ChromaDB")
+                logger.info(f"Successfully added all {total_chunks} chunks to ChromaDB")
 
             except Exception as e:
                 logger.error(f"Failed to add documents to ChromaDB: {e}")
@@ -522,7 +532,7 @@ def main():
     DOCS_FOLDER = str(settings.INPUT_DOCS_PATH)
 
     # Display current configuration
-    print("📋 Configuration from settings:")
+    print("Configuration from settings:")
     print(f"  - Input docs path: {DOCS_FOLDER}")
     print(f"  - ChromaDB path: {settings.CHROMA_DB_PATH}")
     print(f"  - Collection name: {settings.CHROMA_COLLECTION_NAME}")
@@ -536,10 +546,10 @@ def main():
         pipeline = create_pipeline_from_settings(delete_existing=True)
 
         # Ingest PDF documents
-        print("🚀 Starting PDF ingestion...")
+        print("Starting PDF ingestion...")
         results = pipeline.ingest_pdf_directory(DOCS_FOLDER)
 
-        print("\n📊 Ingestion Results:")
+        print("\n Ingestion Results:")
         print(f"  - Files processed: {results['files_processed']}")
         print(f"  - Successful files: {results['successful_files']}")
         print(f"  - Failed files: {results['failed_files']}")
@@ -547,7 +557,7 @@ def main():
         print(f"  - Total characters: {results['total_characters']:,}")
 
         # Verify ingestion
-        print("\n🔍 Verifying ingestion...")
+        print("\n Verifying ingestion...")
         verification = pipeline.verify_ingestion(
             [
                 "Toyota warranty policy",
@@ -560,22 +570,22 @@ def main():
         print(f"  - Total documents in collection: {verification['total_documents']}")
         print("  - Search test results:")
         for test in verification["search_tests"]:
-            status = "✅" if test["status"] == "success" else "❌"
+            status = "[done]" if test["status"] == "success" else "[failed]"
             print(f"    {status} '{test['query']}': {test.get('results_found', 0)} results")
 
         # Show collection statistics
-        print("\n📈 Collection Statistics:")
+        print("\n Collection Statistics:")
         stats = pipeline.get_collection_stats()
         print(f"  - Collection: {stats['collection_name']}")
         print(f"  - Total documents: {stats['total_documents']}")
         print(f"  - Storage location: {stats['persist_directory']}")
         print(f"  - Embedding model: {stats['embedding_model']}")
 
-        print("\n✅ Pipeline completed successfully!")
+        print("\n Pipeline completed successfully!")
 
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")
-        print(f"\n❌ Pipeline failed: {e}")
+        print(f"\n Pipeline failed: {e}")
         raise
 
 

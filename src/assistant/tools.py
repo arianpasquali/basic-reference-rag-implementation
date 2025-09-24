@@ -403,21 +403,6 @@ TOOLS: List[Callable[..., Any]] = [
 ]
 
 
-# def create_toyota_tools(chroma_db_path: str = str(CHROMA_DB_PATH), sqlite_path: str = str(DEFAULT_SQLITE_PATH)):
-#     """
-#     Create Toyota-specific tools for document search and SQL queries.
-#     This function is kept for backward compatibility.
-
-#     Args:
-#         chroma_db_path: Path to ChromaDB database directory
-#         sqlite_path: Path to SQLite database
-
-#     Returns:
-#         List of tools for the agent
-#     """
-#     return TOOLS
-
-
 def get_vectorstore() -> Optional[Chroma]:
     """
     Get the ChromaDB vectorstore instance.
