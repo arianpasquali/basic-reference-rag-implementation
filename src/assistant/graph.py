@@ -21,8 +21,8 @@ from langgraph.runtime import Runtime
 
 from assistant.context import Context
 from assistant.guardrails import GuardrailsOutput, OpenAIModerator, SafetyAssessment
-from assistant.semantic_tools import TOOLS, SearchResult
 from assistant.state import InputState, Router, State
+from assistant.tools import TOOLS, SearchResult
 from assistant.utils import convert_search_result_to_document, load_chat_model
 
 load_dotenv()
