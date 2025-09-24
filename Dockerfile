@@ -25,6 +25,7 @@ COPY uv.lock .
 RUN uv sync --frozen
 
 # Copy source code
+COPY .chainlit/ ./
 COPY src/ ./src/
 COPY data/ ./data/
 COPY docs/ ./docs/
@@ -45,6 +46,7 @@ EXPOSE 8000
 ENV CHAINLIT_HOST=0.0.0.0
 ENV CHAINLIT_PORT=8000
 
+# Simple setup for sqlite because is small enough to fit in the container
 RUN make setup-structured-db
 
 # Run the Chainlit application
