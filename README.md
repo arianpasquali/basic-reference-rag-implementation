@@ -11,6 +11,8 @@ This assistant can:
 - **Search Documents**: Finds relevant information in manuals, contracts, and warranty documents
 - **Tool Orchestration**: Answers complex questions by combining different tools
 
+You can run it locally or you can access the deployed version at [https://rag-reference-demo.onrender.com/](https://rag-reference-demo.onrender.com/).
+
 ## How it works
 
 The assistant uses a multi-step LangGraph workflow with intelligent routing:
@@ -92,7 +94,7 @@ make setup-db
 # Web interface
 make run
 
-# Development mode
+# Development mode. This will open LangGraph Studio
 make dev
 ```
 
@@ -117,30 +119,26 @@ Create a `.env` file in the project root:
 ```bash
 # Required
 OPENAI_API_KEY=your-api-key
-
-# Optional
-DEFAULT_MODEL="openai/gpt-4.1-mini"
-MAX_SEARCH_RESULTS=10
 ```
 
 ## Project Structure
 
 ```
 src/
-├── assistant/            # Core agent
-│   ├── graph.py         # LangGraph workflow
-│   ├── tools.py         # SQL and document search tools
-│   ├── state.py         # Agent state management
-│   ├── context.py       # Configuration
-│   ├── prompts.py       # System prompts
-│   └── guardrails.py    # Safety features
-└── chainlit_app.py      # Web interface
+├── assistant/                                  # Core agent
+│   ├── graph.py                                # LangGraph workflow
+│   ├── tools.py                                # SQL and document search tools
+│   ├── state.py                                # Agent state management
+│   ├── context.py                              # Configuration
+│   ├── prompts.py                              # System prompts
+│   └── guardrails.py                           # Safety features
+└── chainlit_app.py                             # Web interface
 
-scripts/                 # Database setup and ingestion scripts
+scripts/                                        # Database setup and ingestion scripts
 ├── structured_data_ingestion_pipeline.py       # Ingest structured data into SQLite
 ├── unstructured_data_ingestion_pipeline.py     # Ingest pdf documents into ChromaDB
-data/                    # Sample CSV data
-docs/                    # Sample PDF documents
+data/                                           # Sample CSV data
+docs/                                           # Sample PDF documents
 ```
 
 ## Try these questions
@@ -158,13 +156,34 @@ docs/                    # Sample PDF documents
 
 ## Document Ingestion
 
-Ingest PDF documents for semantic retrieval:
+### Local ChromaDB (Default)
+
+Ingest PDF documents for semantic retrieval using ChromaDB.
+This takes some time to parse the big documents.
 
 ```bash
 # Ingest PDFs from ./docs directory
 make setup-embeddings-db
 ```
 
+### ChromaDB Cloud (Optional)
+
+To use ChromaDB Cloud instead of local storage:
+
+1. **Set up ChromaDB Cloud credentials** in your `.env` file:
+   ```bash
+   CHROMA_API_KEY=your-chroma-api-key
+   CHROMA_TENANT_ID=your-tenant-id
+   CHROMA_DATABASE_NAME=your-database-name
+   ```
+
+2. **Run ingestion** (same command, will auto-detect cloud config):
+
+```bash
+make setup-embeddings-db
+```
+
+The system automatically detects whether to use local or cloud ChromaDB based on the presence of `CHROMA_API_KEY`.
 
 ## Development
 
@@ -180,23 +199,6 @@ make dev  # Opens LangGraph Studio
 
 ![LangGraph Studio Development](media/studio_dev.png)
 
-### Docker Development
-
-```bash
-# Build and run with Docker Compose
-docker-compose up --build
-
-# Rebuild after code changes
-docker-compose down
-docker-compose up --build
-
-# View logs
-docker-compose logs -f toyota-rag-assistant
-
-# Interactive shell for debugging
-docker run -it --env-file .env toyota-rag-assistant /bin/bash
-```
-
 ## Troubleshooting
 
 ### Local Development Issues
@@ -204,27 +206,6 @@ docker run -it --env-file .env toyota-rag-assistant /bin/bash
 **Database issues:**
 ```bash
 make setup-db  # Recreate databases
-```
-
-### Docker Issues
-
-**Container won't start:**
-```bash
-# Check logs
-docker-compose logs toyota-rag-assistant
-
-# Rebuild image
-docker-compose down
-docker-compose up --build
-```
-
-**Environment variables not loading:**
-```bash
-# Verify .env file exists and has correct format
-cat .env
-
-# Check if variables are loaded in container
-docker run --env-file .env toyota-rag-assistant env | grep OPENAI
 ```
 
 ---

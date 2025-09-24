@@ -1,6 +1,6 @@
-## Welcome to Motor Industry Assistant
+## Toyota/Lexus Assistant
 
-Welcome to the Motor Industry Assistant. A proof-of-concept agentic system that helps answer automotive industry questions by combining structured sales data and unstructured documents like owner manuals.
+Welcome to the Toyota/Lexus Assistant. A proof-of-concept agentic system that helps answer automotive industry questions by combining structured sales data and unstructured documents like owner manuals.
 
 ### What This Assistant Can Do
 
