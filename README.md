@@ -108,7 +108,7 @@ Visit `http://localhost:8000` to chat with the assistant.
 
 ### Sample Data
 - **Sales Data** (SQLite): Vehicle sales by model, country, and date
-- **Documents** (LanceDB): Toyota manuals, contracts, and warranty policies
+- **Documents** (ChromaDB): Toyota manuals, contracts, and warranty policies
 
 ## Configuration
 
