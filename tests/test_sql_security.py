@@ -13,7 +13,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from assistant.secure_sql import QueryParameters, QueryType, SecureSQLExecutor
-from assistant.secure_tools import execute_sql_secure
+from assistant.sql_tools import execute_sql_secure
 from assistant.sql_validator import SQLSecurityValidator
 
 

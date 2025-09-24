@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 from core.settings import settings
 
-from .secure_tools import SECURE_SQL_TOOLS
+from .sql_tools import SECURE_SQL_TOOLS
 
 logger = logging.getLogger(__name__)
 
